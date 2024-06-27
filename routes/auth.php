@@ -6,14 +6,15 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [RegisteredUserController::class, 'store'])
-                ->middleware('guest')
+                // ->middleware('guest')
                 ->name('register');
 
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])
-                ->middleware('guest')
+                // ->middleware('guest')
                 ->name('login');
 
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
@@ -33,5 +34,9 @@ Route::post('/email/verification-notification', [EmailVerificationNotificationCo
                 ->name('verification.send');
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
-                ->middleware('auth')
+                // ->middleware('auth')
                 ->name('logout');
+
+Route::get('/user', [UserController::class, 'show'])
+                // ->middleware('auth')
+                ->name('user.details');
