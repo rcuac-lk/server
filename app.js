@@ -9,7 +9,7 @@ const app = express();
 app.use(
   cors({
     credentials: true,
-    origin: ["http://localhost:3000", "http://server.rcuac.lk"],
+    origin: ["http://localhost:3000", "https://dev.rcuac.lk"],
   })
 );
 
@@ -45,7 +45,7 @@ app.get("/", (req, res) => {
 
 // routes
 require("./app/routes/auth.routes")(app);
-// require("./app/routes/user.routes")(app);
+require("./app/routes/user.routes")(app);
 
 // set port, listen for requests
 const PORT = process.env.PORT || 8080;

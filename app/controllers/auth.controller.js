@@ -17,6 +17,7 @@ exports.signup = async (req, res) => {
       Email: req.body.email,
       Password: bcrypt.hashSync(req.body.password, 8),
       Role: req.body.role,
+      Approved: false
     });
 
     if (req.body.role) {
@@ -91,6 +92,7 @@ exports.signin = (req, res) => {
           roles: user.Role,
           accessToken: token,
           refreshToken: refreshToken,
+          approved: user.Approved
         });
       });
     })

@@ -24,6 +24,9 @@ module.exports = (sequelize, Sequelize) => {
     Email: {
       type: Sequelize.STRING(100)
     },
+    Approved: {
+      type: Sequelize.BOOLEAN
+    },
     ParentID: {
       type: Sequelize.INTEGER,
       // references: {
