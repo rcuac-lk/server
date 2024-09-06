@@ -26,6 +26,16 @@ exports.notApprovedUsers = (req, res) => {
     });
 };
 
+exports.approvedUsers = (req, res) => {
+  User.findAll({ where: { Approved: true } })
+    .then(users => {
+      res.status(200).send(users);
+    })
+    .catch(err => {
+      res.status(500).send({ message: err.message });
+    });
+};
+
 exports.approveUser = (req, res) => {
   User.findByPk(req.params.id)
     .then(user => {
