@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const cookieSession = require("cookie-session");
+const swaggerUi = require('swagger-ui-express');
+const swaggerFile = require('./swagger_output.json');
 
 const app = express();
 
@@ -15,6 +17,9 @@ app.use(
 
 // parse requests of content-type - application/json
 app.use(express.json());
+
+// Swagger
+app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 // parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
