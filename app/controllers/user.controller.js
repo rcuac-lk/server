@@ -111,7 +111,6 @@ exports.updateProfile = (req, res) => {
         return res.status(404).send({ message: "User not found." });
       }
 
-      user.Username = req.body.Username;
       user.FirstName = req.body.FirstName;
       user.LastName = req.body.LastName;
       user.Email = req.body.Email;

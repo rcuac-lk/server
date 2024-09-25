@@ -13,7 +13,9 @@ exports.signup = async (req, res) => {
   // Save User to Database
   try {
     const user = await User.create({
-      Username: req.body.username,
+      Username: req.body.email,
+      FirstName: req.body.firstName,
+      LastName: req.body.lastName,
       Email: req.body.email,
       Password: bcrypt.hashSync(req.body.password, 8),
       Role: req.body.role,
@@ -58,7 +60,7 @@ exports.signout = async (req, res) => {
 exports.signin = (req, res) => {
   User.findOne({
     where: {
-      Username: req.body.username
+      email: req.body.email
     }
   })
     .then(async (user) => {
@@ -87,7 +89,8 @@ exports.signin = (req, res) => {
       user.getRoles().then(roles => {
         res.status(200).send({
           id: user.UserID,
-          username: user.Username,
+          firstName: user.FirstName,
+          lastName: user.LastName,
           email: user.Email,
           roles: user.Role,
           accessToken: token,
