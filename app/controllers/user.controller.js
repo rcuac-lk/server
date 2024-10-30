@@ -114,10 +114,43 @@ exports.updateProfile = (req, res) => {
       user.FirstName = req.body.FirstName;
       user.LastName = req.body.LastName;
       user.Email = req.body.Email;
+      
+      if (user.Role !== req.body.Role) {
+        user.Role = req.body.Role;
+        if (user.Role === "Admin") {
+          // sendEmail(user.Email, "Role Update", "Your role has been updated to Admin.");
+        }
+      }
 
       user.save()
         .then(() => {
           res.status(200).send({ message: "User updated successfully!" });
+        })
+        .catch(err => {
+          res.status(500).send({ message: err.message });
+        });
+    })
+    .catch(err => {
+      res.status(500).send({ message: err.message });
+    });
+};
+
+exports.updatePassword = (req, res) => {
+  User.findByPk(req.params.id)
+    .then(user => {
+      if (!user) {
+        return res.status(404).send({ message: "User not found." });
+      }
+
+      if (user.Password !== req.body.oldPassword) {
+        return res.status(400).send({ message: "Incorrect old password." });
+      }
+
+      user.Password = req.body.newPassword;
+
+      user.save()
+        .then(() => {
+          res.status(200).send({ message: "Password updated successfully!" });
         })
         .catch(err => {
           res.status(500).send({ message: err.message });
