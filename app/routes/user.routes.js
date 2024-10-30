@@ -37,10 +37,10 @@ module.exports = function(app) {
   );
 
   app.get(
-    "api/users/approved",
+    "/api/users/approved",
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.approvedUsers
-  )
+  );
 
   app.get(
     "/api/users/getAll",
