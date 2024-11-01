@@ -119,6 +119,7 @@ exports.updateProfile = (req, res) => {
         user.Role = req.body.Role;
         if (user.Role === "Admin") {
           // sendEmail(user.Email, "Role Update", "Your role has been updated to Admin.");
+          console.log("Your role has been updated to Admin.");
         }
       }
 
