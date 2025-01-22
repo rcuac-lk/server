@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const cookieSession = require("cookie-session");
+const swaggerUi = require('swagger-ui-express');
+const swaggerFile = require('./swagger_output.json');
 
 const app = express();
 
@@ -9,12 +11,15 @@ const app = express();
 app.use(
   cors({
     credentials: true,
-    origin: ["http://localhost:3000", "http://server.rcuac.lk"],
+    origin: ["http://localhost:3000", "https://dev.rcuac.lk"],
   })
 );
 
 // parse requests of content-type - application/json
 app.use(express.json());
+
+// Swagger
+app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 // parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
@@ -45,7 +50,7 @@ app.get("/", (req, res) => {
 
 // routes
 require("./app/routes/auth.routes")(app);
-// require("./app/routes/user.routes")(app);
+require("./app/routes/user.routes")(app);
 
 // set port, listen for requests
 const PORT = process.env.PORT || 8080;

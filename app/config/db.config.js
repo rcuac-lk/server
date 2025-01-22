@@ -1,8 +1,13 @@
 module.exports = {
+  // HOST: "localhost",
+  // USER: "root",
+  // PASSWORD: "",
+  // DB: "rcuac",
+  // dialect: "mysql",
   HOST: "localhost",
-  USER: "rcuac_user",
-  PASSWORD: "a6jl0$5Q8",
-  DB: "rcuac",
+  USER: "hacktwru_rcuac",
+  PASSWORD: "hacktwru_rcuac",
+  DB: "hacktwru_rcuac",
   dialect: "mysql",
   pool: {
     max: 5,

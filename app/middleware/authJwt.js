@@ -43,26 +43,27 @@ verifyToken = (req, res, next) => {
   });
 };
 
-// isAdmin = async (req, res, next) => {
-//   try {
-//     const user = await User.findByPk(req.userId);
-//     const roles = await user.getRoles();
+isAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    console.log(user);
+    const role = user.dataValues.Role;
 
-//     for (let i = 0; i < roles.length; i++) {
-//       if (roles[i].name === "admin") {
-//         return next();
-//       }
-//     }
+    // for (let i = 0; i < roles.length; i++) {
+      if (role === "Admin") {
+        return next();
+      }
+    // }
 
-//     return res.status(403).send({
-//       message: "Require Admin Role!",
-//     });
-//   } catch (error) {
-//     return res.status(500).send({
-//       message: "Unable to validate User role!",
-//     });
-//   }
-// };
+    return res.status(403).send({
+      message: "Require Admin Role!",
+    });
+  } catch (error) {
+    return res.status(500).send({
+      message: "Unable to validate User role!",
+    });
+  }
+};
 
 // isModerator = async (req, res, next) => {
 //   try {
@@ -120,6 +121,7 @@ catchError = (err, res) => {
 
 const authJwt = {
   verifyToken,
-  catchError
+  catchError,
+  isAdmin
 };
 module.exports = authJwt;
