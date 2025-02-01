@@ -33,6 +33,9 @@ module.exports = (sequelize, Sequelize) => {
       //   model: 'Parent', // Assumes 'Parent' table is defined
       //   key: 'ParentID'
       // }
+    },
+    Active: {
+      type: Sequelize.BOOLEAN
     }
   });
 
