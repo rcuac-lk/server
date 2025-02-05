@@ -1,5 +1,6 @@
 const db = require('../models');
 const User = db.user;
+const { Op, Sequelize } = require("sequelize");
 // exports.allAccess = (req, res) => {
 //   res.status(200).send("Public Content.");
 // };
@@ -17,7 +18,7 @@ const User = db.user;
 // };
 
 exports.notApprovedUsers = (req, res) => {
-  User.findAll({ where: { Approved: false } })
+  User.findAll({ where: { Approved: false, Active: true } })
     .then(users => {
       res.status(200).send(users);
     })
@@ -27,7 +28,7 @@ exports.notApprovedUsers = (req, res) => {
 };
 
 exports.approvedUsers = (req, res) => {
-  User.findAll({ where: { Approved: true } })
+  User.findAll({ where: { Approved: true, Active: true } })
     .then(users => {
       res.status(200).send(users);
     })
@@ -58,8 +59,30 @@ exports.approveUser = (req, res) => {
     });
 };
 
+exports.deactivateUser = (req, res) => {
+  User.findByPk(req.params.id)
+    .then(user => {
+      if (!user) {
+        return res.status(404).send({ message: "User not found." });
+      }
+
+      user.Active = false;
+
+      user.save()
+        .then(() => {
+          res.status(200).send({ message: "User deactivated successfully!" });
+        })
+        .catch(err => {
+          res.status(500).send({ message: err.message });
+        });
+    })
+    .catch(err => {
+      res.status(500).send({ message: err.message });
+    });
+};
+
 exports.getAllUsers = (req, res) => {
-  User.findAll()
+  User.findAll({ where: { Active: true } })
     .then(users => {
       res.status(200).send(users);
     })
@@ -160,4 +183,33 @@ exports.updatePassword = (req, res) => {
     .catch(err => {
       res.status(500).send({ message: err.message });
     });
+};
+
+exports.searchUsers = async (req, res) => {
+  try {
+    const { search, role } = req.query;
+
+    let where = { Approved: true, Active: true }; // Ensure only approved users are returned
+
+    // Apply search filter
+    if (search) {
+      where[Op.or] = [
+        { FirstName: { [Op.like]: `%${search}%` } },
+        { LastName: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    // Apply role filter if provided
+    if (role) {
+      where.Role = role;
+    }
+
+    // Fetch filtered users
+    const users = await User.findAll({ where });
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error searching users:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };

@@ -71,4 +71,16 @@ module.exports = function(app) {
     [authJwt.verifyToken],
     controller.updateProfile
   );
+
+  app.get(
+    "/api/users/search",
+    [authJwt.verifyToken],
+    controller.searchUsers
+  );
+
+  app.put(
+    "/api/users/deactivate/:id",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.deactivateUser
+  );
 };

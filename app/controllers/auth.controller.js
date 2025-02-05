@@ -19,7 +19,8 @@ exports.signup = async (req, res) => {
       Email: req.body.email,
       Password: bcrypt.hashSync(req.body.password, 8),
       Role: req.body.role,
-      Approved: false
+      Approved: false,
+      Active: true
     });
 
     if (req.body.role) {
@@ -60,7 +61,8 @@ exports.signout = async (req, res) => {
 exports.signin = (req, res) => {
   User.findOne({
     where: {
-      email: req.body.email
+      email: req.body.email,
+      Active: true
     }
   })
     .then(async (user) => {
@@ -114,7 +116,7 @@ exports.refreshToken = async (req, res) => {
   try {
     let refreshToken = await RefreshToken.findOne({ where: { token: requestToken } });
 
-    console.log(refreshToken)
+    console.log("refresh token :", refreshToken)
 
     if (!refreshToken) {
       res.status(403).json({ message: "Refresh token is not in database!" });
