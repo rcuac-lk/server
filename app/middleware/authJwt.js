@@ -65,6 +65,69 @@ isAdmin = async (req, res, next) => {
   }
 };
 
+isCoach = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    const role = user.dataValues.Role;
+
+    // for (let i = 0; i < roles.length; i++) {
+      if (role === "Coach") {
+        return next();
+      }
+    // }
+
+    return res.status(403).send({
+      message: "Require Coach Role!",
+    });
+  } catch (error) {
+    return res.status(500).send({
+      message: "Unable to validate User role!",
+    });
+  }
+};
+
+isManager = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    const role = user.dataValues.Role;
+
+    // for (let i = 0; i < roles.length; i++) {
+      if (role === "Manager") {
+        return next();
+      }
+    // }
+
+    return res.status(403).send({
+      message: "Require Manager Role!",
+    });
+  } catch (error) {
+    return res.status(500).send({
+      message: "Unable to validate User role!",
+    });
+  }
+};
+
+isParent = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    const role = user.dataValues.Role;
+
+    // for (let i = 0; i < roles.length; i++) {
+      if (role === "Parent") {
+        return next();
+      }
+    // }
+
+    return res.status(403).send({
+      message: "Require Parent Role!",
+    });
+  } catch (error) {
+    return res.status(500).send({
+      message: "Unable to validate User role!",
+    });
+  }
+};
+
 // isModerator = async (req, res, next) => {
 //   try {
 //     const user = await User.findByPk(req.userId);
@@ -122,6 +185,9 @@ catchError = (err, res) => {
 const authJwt = {
   verifyToken,
   catchError,
-  isAdmin
+  isAdmin,
+  isCoach,
+  isManager,
+  isParent
 };
 module.exports = authJwt;
