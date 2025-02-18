@@ -27,13 +27,6 @@ module.exports = (sequelize, Sequelize) => {
     Approved: {
       type: Sequelize.BOOLEAN
     },
-    ParentID: {
-      type: Sequelize.INTEGER,
-      // references: {
-      //   model: 'Parent', // Assumes 'Parent' table is defined
-      //   key: 'ParentID'
-      // }
-    },
     Active: {
       type: Sequelize.BOOLEAN
     }

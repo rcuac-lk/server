@@ -77,7 +77,7 @@ exports.signin = (req, res) => {
 
       if (!passwordIsValid) {
         return res.status(401).send({
-          accessToken: null,
+          // accessToken: "",
           message: "Invalid Password!"
         });
       }

@@ -18,7 +18,7 @@ const { Op, Sequelize } = require("sequelize");
 // };
 
 exports.notApprovedUsers = (req, res) => {
-  User.findAll({ where: { Approved: false, Active: true } })
+  User.findAll({ where: { Approved: false, Active: true }, attributes: { exclude: ["Password"] } })
     .then(users => {
       res.status(200).send(users);
     })
@@ -28,7 +28,7 @@ exports.notApprovedUsers = (req, res) => {
 };
 
 exports.approvedUsers = (req, res) => {
-  User.findAll({ where: { Approved: true, Active: true } })
+  User.findAll({ where: { Approved: true, Active: true }, attributes: { exclude: ["Password"] } })
     .then(users => {
       res.status(200).send(users);
     })
@@ -82,7 +82,7 @@ exports.deactivateUser = (req, res) => {
 };
 
 exports.getAllUsers = (req, res) => {
-  User.findAll({ where: { Active: true } })
+  User.findAll({ where: { Active: true }, attributes: { exclude: ["Password"] } })
     .then(users => {
       res.status(200).send(users);
     })
@@ -92,7 +92,7 @@ exports.getAllUsers = (req, res) => {
 };
 
 exports.getUser = (req, res) => {
-  User.findByPk(req.params.id)
+  User.findByPk(req.params.id, { attributes: { exclude: ["Password"] } })
     .then(user => {
       if (!user) {
         return res.status(404).send({ message: "User not found." });
@@ -205,7 +205,7 @@ exports.searchUsers = async (req, res) => {
     }
 
     // Fetch filtered users
-    const users = await User.findAll({ where });
+    const users = await User.findAll({ where, attributes: { exclude: ["Password"] } });
 
     res.status(200).json(users);
   } catch (error) {
