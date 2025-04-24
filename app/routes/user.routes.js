@@ -83,4 +83,28 @@ module.exports = function(app) {
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.deactivateUser
   );
+
+  app.get(
+    "/api/users/ageGroups",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.getAgeGroups
+  );
+
+  app.get(
+    "/api/users/getSessionData",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.getSessionData
+  );
+
+  app.get(
+    "/api/users/getEventTypes",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.getEventTypes
+  );
+
+  app.get(
+    "/api/users/getEventLengths",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.getEventLengths
+  );
 };
