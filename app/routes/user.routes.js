@@ -107,4 +107,16 @@ module.exports = function(app) {
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.getEventLengths
   );
+
+  app.get(
+    "/api/users/getAttendancedata",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.getAttendancedata
+  )
+
+  app.post(
+    "/api/users/markAttendance",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.markAttendance
+  )  
 };

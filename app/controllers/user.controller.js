@@ -1,5 +1,11 @@
 const db = require('../models');
 const User = db.user;
+const AgeCategory = db.ageCategory;
+const Session = db.session;
+const EventType = db.event;
+const Distance = db.distance;
+const Attendance = db.attendance;
+const Student = db.student;
 const { Op, Sequelize } = require("sequelize");
 // exports.allAccess = (req, res) => {
 //   res.status(200).send("Public Content.");
@@ -239,148 +245,197 @@ exports.searchUsers = async (req, res) => {
 };
 
 exports.getAgeGroups = async (req, res) => {
-  // try {
-  //   const ageGroups = await User.findAll({
-  //     attributes: [
-  //       [Sequelize.fn('COUNT', Sequelize.col('UserID')), 'count'],
-  //       [Sequelize.fn('FLOOR', Sequelize.fn('DATEDIFF', Sequelize.fn('NOW'), Sequelize.col('DateOfBirth')) / 365), 'age']
-  //     ],
-  //     group: [Sequelize.fn('FLOOR', Sequelize.fn('DATEDIFF', Sequelize.fn('NOW'), Sequelize.col('DateOfBirth')) / 365)],
-  //     where: { Active: true },
-  //   });
+  try {
+    const categories = await AgeCategory.findAll();
 
-  //   res.status(200).json(ageGroups);
-  // } catch (error) {
-  //   console.error("Error fetching age groups:", error);
-  //   res.status(500).json({ message: "Internal server error" });
-  // }
-  const ageGroups = [
+    const ageGroups = [
       { name: "All Ages", value: "" },
-      { name: "Under 11", value: "Under 11" },
-      { name: "Under 13", value: "Under 13" },
-      { name: "Under 15", value: "Under 15" },
-      { name: "Under 17", value: "Under 17" },
-      { name: "Under 19", value: "Under 19" },
+      ...categories.map(row => ({
+        name: row.category,
+        value: row.category
+      }))
     ];
-  res.status(200).json(ageGroups);
+
+    console.log("Age groups:", ageGroups);
+    res.json({
+      data: ageGroups,
+      request: {}
+    });
+  } catch (err) {
+    console.error("Error fetching age categories:", err);
+    res.status(500).json({ error: "Failed to fetch age categories" });
+  }
 }
 
 exports.getSessionData = async (req, res) => {
-  // try {
-  //   const userId = req.userId; // Assuming you have the user ID from the token
-  //   const user = await User.findByPk(userId, { attributes: { exclude: ["Password"] } });
+  try {
+    const data = await Session.findAll({
+      attributes: ['id', 'sessionName']
+    });
 
-  //   if (!user) {
-  //     return res.status(404).send({ message: "User not found." });
-  //   }
+    const sessions = data.map((item) => ({
+      SessionID: item.id,
+      SessionName: item.sessionName,
+    }));
 
-  //   res.status(200).send(user);
-  // } catch (error) {
-  //   console.error("Error fetching session data:", error);
-  //   res.status(500).send({ message: "Internal server error" });
-  // }
-  const dateObject = new Date();
-  const today = dateObject.toISOString().split('T')[0];
-
-  const sessions = [
-    {
-      SessionID: 1000,
-      SessionName: "Morning Practice Session",
-      SessionDate: today,
-      SessionTime: "7:00 AM",
-      SessionLocation: "Collage Pool",
-      SessionDescription: "Standard Practice Session",
-    },
-    {
-      SessionID: 1001,
-      SessionName: "Evening Practice Session",
-      SessionDate: today,
-      SessionTime: "05:00 PM",
-      SessionLocation: "Collage Pool",
-      SessionDescription: "Standard Practice Session",
-    },
-    {
-      SessionID: 1002,
-      SessionName: "Natianal Championship",
-      SessionDate: "2025-01-12",
-      SessionTime: "12:00 PM",
-      SessionLocation: "Sugathadasa Stadium",
-      SessionDescription: "Main National Championship",
-    },
-  ];
-
-  res.status(200).json({ sessions });
+    res.status(200).json({ sessions });
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    res.status(500).json({ message: "Failed to fetch session data" });
+  }
 }
 
 exports.getEventTypes = async (req, res) => {
-  // try {
-  //   const eventTypes = await EventType.findAll({
-  //     attributes: ['EventTypeID', 'EventTypeName'],
-  //   });
-  //   res.status(200).json(eventTypes);
-  // } catch (error) {
-  //   console.error("Error fetching event types:", error);
-  //   res.status(500).json({ message: "Internal server error" });
-  // }
-  const eventTypes = [
-    {
-      EventTypeID: 1000,
-      EventType: "Free Style",
-      EventTypeDescription: "Free Style Swimming",
-    },
-    {
-      EventTypeID: 1001,
-      EventType: "Back Stroke",
-      EventTypeDescription: "Back Stroke Swimming",
-    },
-    {
-      EventTypeID: 1002,
-      EventType: "Breast Stroke",
-      EventTypeDescription: "Breast Stroke Swimming",
-    },
-    {
-      EventTypeID: 1003,
-      EventType: "Butterfly",
-      EventTypeDescription: "Butterfly Swimming",
-    }
-  ];
+  try {
+    const data = await EventType.findAll({
+      attributes: ['EventID', 'EventName'],
+    });
 
-  res.status(200).json({ eventTypes });
+    const eventTypes = data.map((item) => ({
+      EventTypeID: item.EventID,
+      EventType: item.EventName,
+    }));
+
+    res.status(200).json({ eventTypes });
+  } catch (error) {
+    console.error("Error fetching event types:", error);
+    res.status(500).json({ message: "Failed to fetch event types" });
+  }
 };
 
 exports.getEventLengths = async (req, res) => {
-  // try {
-  //   const eventLengths = await EventLength.findAll({
-  //     attributes: ['EventLengthID', 'EventLengthName'],
-  //   });
-  //   res.status(200).json(eventLengths);
-  // } catch (error) {
-  //   console.error("Error fetching event lengths:", error);
-  //   res.status(500).json({ message: "Internal server error" });
-  // }
+  try {
+    const data = await Distance.findAll({
+      attributes: ['id', 'length'],
+    });
 
-  const eventLengths = [
-    {
-      EventLengthID: 1000,
-      EventLength: "50m",
-      EventLengthDescription: "50 meter event",
-    },
-    {
-      EventLengthID: 1001,
-      EventLength: "100m",
-      EventLengthDescription: "100 meter event",
-    },
-    {
-      EventLengthID: 1002,
-      EventLength: "200m",
-      EventLengthDescription: "200 meter event",
-    },
-    {
-      EventLengthID: 1003,
-      EventLength: "400m",
-      EventLengthDescription: "400 meter event",
+    const eventLengths = data.map((item) => ({
+      EventLengthID: item.id,
+      EventLength: `${item.length}m`,
+    }));
+
+    res.status(200).json({ eventLengths });
+  } catch (error) {
+    console.error("Error fetching event lengths:", error);
+    res.status(500).json({ message: "Failed to fetch event lengths" });
+  }
+}
+
+function calculateAgeCategory(dob) {
+  const today = new Date();
+  const birthDate = new Date(dob);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  if (age <= 10) return "Under 11";
+  if (age <= 12) return "Under 13";
+  if (age <= 14) return "Under 15";
+  if (age <= 16) return "Under 17";
+  if (age <= 18) return "Under 19";
+}
+
+exports.getAttendancedata = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    // Check if date or session is invalid or empty
+    const isInvalidFilter = !date;
+
+    const students = await Student.findAll();
+    const response = [];
+
+    for (const student of students) {
+      let attendance = null;
+      let present = "";
+      if (!isInvalidFilter) {
+        // Convert the date to start of day in UTC to avoid timezone issues
+        const startOfDay = new Date(date + 'T00:00:00.000Z');
+        const endOfDay = new Date(date + 'T23:59:59.999Z');
+
+        attendance = await Attendance.findOne({
+          where: {
+            StudentID: student.StudentID,
+            AttendanceDate: {
+              [Op.between]: [startOfDay, endOfDay]
+            }
+          },
+          order: [['AttendanceID', 'DESC']]
+        });
+      }
+
+      const ageCategory = calculateAgeCategory(student.DOB);
+      
+      if(attendance){
+        
+        if(attendance.Present == 1)
+          present = "Present"
+        else
+          present = "Absent"
+      }
+      response.push({
+        UserID: student.StudentID,
+        AdmisionNumber: student.AdmisionNumber,
+        LastUpdate: attendance ? present : "",
+        LastUpdateBy: attendance ? attendance.MarkedBy : "",
+        LastUpdateAt: attendance
+          ? new Date(attendance.updatedAt).toLocaleTimeString()
+          : "",
+        AgeCategory: ageCategory,
+        FirstName: student.FirstName,
+        LastName: student.LastName,
+        bestTiming: student.bestTiming
+      });
     }
-  ];
 
-  res.status(200).json({ eventLengths });
+    res.status(200).json({ attendanceData: response });
+  } catch (error) {
+    console.error("Error fetching student attendance:", error);
+    res.status(500).json({ message: "Failed to retrieve student data" });
+  }
+};
+
+exports.markAttendance = async (req, res) => {
+  try {
+    const { memberId, date, present, markedBy } = req.body;
+
+    if (!memberId || !date) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+    let presentBool = "";
+
+    if(present === "Present") {
+      presentBool = true;
+    } else {
+      presentBool = false;
+    }
+
+    // Check if attendance already marked
+    // const existing = await Attendance.findOne({
+    //   where: { StudentID: memberId, AttendanceDate: date, Session: session }
+    // });
+
+    // if (existing) {
+    //   // Update existing record
+    //   existing.Present = present;
+    //   existing.MarkedBy = markedBy;
+    //   await existing.save();
+    // } else {
+      // Create new record
+      await Attendance.create({
+        StudentID: memberId,
+        AttendanceDate: date,
+        Present: presentBool,
+        MarkedBy: markedBy
+      });
+    // }
+
+    res.status(200).json({ message: "Attendance saved" });
+  } catch (error) {
+    console.error("Error saving attendance:", error);
+    res.status(500).json({ message: "Failed to mark attendance" });
+  }
 };
