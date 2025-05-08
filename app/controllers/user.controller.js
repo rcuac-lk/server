@@ -382,7 +382,7 @@ exports.getAttendancedata = async (req, res) => {
         LastUpdate: attendance ? present : "",
         LastUpdateBy: attendance ? attendance.MarkedBy : "",
         LastUpdateAt: attendance
-          ? new Date(attendance.updatedAt).toLocaleTimeString()
+          ? new Date(attendance.MarkedAt).toLocaleString()
           : "",
         AgeCategory: ageCategory,
         FirstName: student.FirstName,

@@ -22,6 +22,11 @@ module.exports = (sequelize, Sequelize) => {
         MarkedBy: {
             type: Sequelize.INTEGER,
             allowNull: false,
+        },
+        MarkedAt: {
+          type: Sequelize.DATE,
+          allowNull: false,
+          defaultValue: Sequelize.NOW
         }
       },
       {
