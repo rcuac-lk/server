@@ -5,7 +5,7 @@ module.exports = (sequelize, Sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    AdmisionNumber: {
+    AdmissionNumber: {
       type: Sequelize.STRING(50)
     },
     FirstName: {

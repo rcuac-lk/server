@@ -378,7 +378,7 @@ exports.getAttendancedata = async (req, res) => {
       }
       response.push({
         UserID: student.StudentID,
-        AdmisionNumber: student.AdmisionNumber,
+        AdmissionNumber: student.AdmissionNumber,
         LastUpdate: attendance ? present : "",
         LastUpdateBy: attendance ? attendance.MarkedBy : "",
         LastUpdateAt: attendance
