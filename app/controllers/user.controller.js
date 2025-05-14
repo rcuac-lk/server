@@ -249,10 +249,10 @@ exports.getAgeGroups = async (req, res) => {
     const categories = await AgeCategory.findAll();
 
     const ageGroups = [
-      { name: "All Ages", value: "" },
+      { name: "All Ages", value: "0" },
       ...categories.map(row => ({
         name: row.category,
-        value: row.category
+        value: row.id
       }))
     ];
 
@@ -340,15 +340,34 @@ function calculateAgeCategory(dob) {
 
 exports.getAttendancedata = async (req, res) => {
   try {
-    const { date, session } = req.query;
+    const { date, session, age } = req.query;
 
     // Check if date or session is invalid or empty
     const isInvalidFilter = !date || !session;
+
+    // Get the age category if age filter is provided
+    let ageCategoryFilter = null;
+    if (age && age !== "0") {
+      const ageCategoryData = await AgeCategory.findOne({
+        where: { id: age }
+      });
+      if (ageCategoryData) {
+        ageCategoryFilter = ageCategoryData.category;
+      }
+    }
 
     const students = await Student.findAll();
     const response = [];
 
     for (const student of students) {
+      // Calculate age category for the student
+      const ageCategory = calculateAgeCategory(student.DOB);
+      
+      // Skip if age filter is set and doesn't match
+      if (ageCategoryFilter && ageCategory !== ageCategoryFilter) {
+        continue;
+      }
+
       let attendance = null;
       let present = "";
       if (!isInvalidFilter) {
@@ -367,11 +386,8 @@ exports.getAttendancedata = async (req, res) => {
           order: [['AttendanceID', 'DESC']]
         });
       }
-
-      const ageCategory = calculateAgeCategory(student.DOB);
       
       if(attendance){
-        
         if(attendance.Present == 1)
           present = "Present"
         else
