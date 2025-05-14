@@ -15,6 +15,10 @@ module.exports = (sequelize, Sequelize) => {
           type: Sequelize.DATE,
           allowNull: false,
         },
+        SessionID: {
+          type: Sequelize.INTEGER,
+          allowNull: false,
+        },
         Present: {
           type: Sequelize.BOOLEAN,
           allowNull: false,

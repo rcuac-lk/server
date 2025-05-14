@@ -340,10 +340,10 @@ function calculateAgeCategory(dob) {
 
 exports.getAttendancedata = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, session } = req.query;
 
     // Check if date or session is invalid or empty
-    const isInvalidFilter = !date;
+    const isInvalidFilter = !date || !session;
 
     const students = await Student.findAll();
     const response = [];
@@ -361,7 +361,8 @@ exports.getAttendancedata = async (req, res) => {
             StudentID: student.StudentID,
             AttendanceDate: {
               [Op.between]: [startOfDay, endOfDay]
-            }
+            },
+            SessionID: session
           },
           order: [['AttendanceID', 'DESC']]
         });
@@ -376,11 +377,20 @@ exports.getAttendancedata = async (req, res) => {
         else
           present = "Absent"
       }
+
+      let markedByFullName = "";
+      if(attendance){
+        const markedByUser = await User.findByPk(attendance.MarkedBy);
+        const markedByFirstName = markedByUser.FirstName;
+        const markedByLastName = markedByUser.LastName;
+        markedByFullName = markedByFirstName + " " + markedByLastName;
+      }
+
       response.push({
         UserID: student.StudentID,
         AdmissionNumber: student.AdmissionNumber,
         LastUpdate: attendance ? present : "",
-        LastUpdateBy: attendance ? attendance.MarkedBy : "",
+        LastUpdateBy: attendance ? markedByFullName : "",
         LastUpdateAt: attendance
           ? new Date(attendance.MarkedAt).toLocaleString()
           : "",
@@ -400,7 +410,7 @@ exports.getAttendancedata = async (req, res) => {
 
 exports.markAttendance = async (req, res) => {
   try {
-    const { memberId, date, present, markedBy } = req.body;
+    const { memberId, date, present, markedBy, session } = req.body;
 
     if (!memberId || !date) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -412,6 +422,19 @@ exports.markAttendance = async (req, res) => {
     } else {
       presentBool = false;
     }
+
+    //session needs to check with session table get the session id
+    const sessionData = await Session.findOne({
+      where: {
+        id: session
+      }
+    });
+
+    if(!sessionData) {
+      return res.status(400).json({ message: "Session not found" });
+    }
+
+    const sessionId = sessionData.id;
 
     // Check if attendance already marked
     // const existing = await Attendance.findOne({
@@ -429,7 +452,8 @@ exports.markAttendance = async (req, res) => {
         StudentID: memberId,
         AttendanceDate: date,
         Present: presentBool,
-        MarkedBy: markedBy
+        MarkedBy: markedBy,
+        SessionID: sessionId
       });
     // }
 
