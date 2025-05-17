@@ -119,4 +119,10 @@ module.exports = function(app) {
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.markAttendance
   )  
+
+  app.post(
+    "/api/users/markTiming",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.markTiming
+  )
 };

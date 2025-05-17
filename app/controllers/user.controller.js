@@ -438,6 +438,13 @@ exports.markAttendance = async (req, res) => {
     } else {
       presentBool = false;
     }
+    
+    const student = await Student.findOne({
+      where: { StudentID: memberId }
+    });
+    if (!student) {
+      return res.status(400).json({ message: "Invalid student ID" });
+    }
 
     //session needs to check with session table get the session id
     const sessionData = await Session.findOne({
@@ -477,5 +484,63 @@ exports.markAttendance = async (req, res) => {
   } catch (error) {
     console.error("Error saving attendance:", error);
     res.status(500).json({ message: "Failed to mark attendance" });
+  }
+};
+
+exports.markTiming = async(req, res) => {
+  try {
+    const { studentId, eventId, performanceDate, distanceId, sessionId, time, recordedBy } = req.body;
+
+    if (!studentId || !eventId || !performanceDate || !distanceId || !sessionId || !time || !recordedBy) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Validate session exists
+    const session = await Session.findOne({
+      where: { id: sessionId }
+    });
+    if (!session) {
+      return res.status(400).json({ message: "Invalid session ID" });
+    }
+
+    // Validate event type exists
+    const eventType = await EventType.findOne({
+      where: { EventID: eventId }
+    });
+    if (!eventType) {
+      return res.status(400).json({ message: "Invalid event type ID" });
+    }
+
+    // Validate distance exists
+    const distance = await Distance.findOne({
+      where: { id: distanceId }
+    });
+    if (!distance) {
+      return res.status(400).json({ message: "Invalid distance ID" });
+    }
+
+    // Validate student exists
+    const student = await Student.findOne({
+      where: { StudentID: studentId }
+    });
+    if (!student) {
+      return res.status(400).json({ message: "Invalid student ID" });
+    }
+
+    // Create new timing record
+    await db.performance.create({
+      StudentID: studentId,
+      EventID: eventId,
+      PerformanceDate: performanceDate,
+      DistanceID: distanceId,
+      SessionID: sessionId,
+      Time: time,
+      RecordedBy: recordedBy
+    });
+
+    res.status(200).json({ message: "Timing recorded successfully" });
+  } catch (error) {
+    console.error("Error recording timing:", error);
+    res.status(500).json({ message: "Failed to record timing" });
   }
 };
