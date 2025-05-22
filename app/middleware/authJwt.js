@@ -128,6 +128,28 @@ isParent = async (req, res, next) => {
   }
 };
 
+allowRoles = (rolesArray) => {
+  return async (req, res, next) => {
+    try {
+      const user = await User.findByPk(req.userId);
+      const role = user.dataValues.Role;
+
+      if (rolesArray.includes(role)) {
+        return next();
+      }
+
+      return res.status(403).send({
+        message: `Require one of these roles: ${rolesArray.join(", ")}`,
+      });
+    } catch (error) {
+      return res.status(500).send({
+        message: "Unable to validate User role!",
+      });
+    }
+  };
+};
+
+
 // isModerator = async (req, res, next) => {
 //   try {
 //     const user = await User.findByPk(req.userId);
@@ -188,6 +210,7 @@ const authJwt = {
   isAdmin,
   isCoach,
   isManager,
-  isParent
+  isParent,
+  allowRoles
 };
 module.exports = authJwt;

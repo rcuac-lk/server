@@ -86,43 +86,43 @@ module.exports = function(app) {
 
   app.get(
     "/api/users/ageGroups",
-    [authJwt.verifyToken, authJwt.isAdmin],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.getAgeGroups
   );
 
   app.get(
     "/api/users/getSessionData",
-    [authJwt.verifyToken, authJwt.isAdmin],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.getSessionData
   );
 
   app.get(
     "/api/users/getEventTypes",
-    [authJwt.verifyToken, authJwt.isAdmin],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.getEventTypes
   );
 
   app.get(
     "/api/users/getEventLengths",
-    [authJwt.verifyToken, authJwt.isAdmin],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.getEventLengths
   );
 
   app.get(
     "/api/users/getAttendancedata",
-    [authJwt.verifyToken, authJwt.isAdmin],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.getAttendancedata
   )
 
   app.post(
     "/api/users/markAttendance",
-    [authJwt.verifyToken, authJwt.isAdmin],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.markAttendance
   )  
 
   app.post(
     "/api/users/markTiming",
-    [authJwt.verifyToken, authJwt.isAdmin],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.markTiming
   )
 };
