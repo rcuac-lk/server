@@ -33,4 +33,10 @@ module.exports = function(app) {
     [authJwt.verifyToken, authJwt.isParent],
     controller.getStudents
   );
+
+  app.post(
+    "/api/parent/updateStudent/:id",
+    [authJwt.verifyToken, authJwt.isParent],
+    controller.updateStudent
+  )
 };

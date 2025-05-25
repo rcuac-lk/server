@@ -82,3 +82,110 @@ exports.getStudents = (req, res) => {
       res.status(500).json({ message: err.message });
     });
 };
+
+function calculateAgeCategory(dob) {
+  const today = new Date();
+  const birthDate = new Date(dob);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  if (age <= 10) return "Under 11";
+  if (age <= 12) return "Under 13";
+  if (age <= 14) return "Under 15";
+  if (age <= 16) return "Under 17";
+  if (age <= 18) return "Under 19";
+}
+
+exports.updateStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(id)
+    const { admissionNumber, firstName, lastName, dateOfBirth } = req.body;
+
+    // Input validation
+    if (!id || !admissionNumber || !firstName || !lastName || !dateOfBirth) {
+      return res.status(400).json({
+        message: "Required fields are missing",
+        required: ["id", "admissionNumber", "firstName", "lastName", "dateOfBirth"]
+      });
+    }
+
+    // Find student
+    const student = await Student.findByPk(id);
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found"
+      });
+    }
+
+    // Check if admission number is already taken by another student
+    if (admissionNumber !== student.AdmissionNumber) {
+      const existingStudent = await Student.findOne({
+        where: { 
+          AdmissionNumber: admissionNumber,
+          StudentID: { [Op.ne]: id } // Exclude current student
+        }
+      });
+      if (existingStudent) {
+        return res.status(400).json({
+          message: "Admission number is already in use"
+        });
+      }
+    }
+
+    // Validate age (must be below 19)
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age >= 19) {
+      return res.status(400).json({
+        message: "Student must be below 19 years old"
+      });
+    }
+
+    // Update student fields
+    const updates = {
+      AdmissionNumber: admissionNumber.trim(),
+      FirstName: firstName.trim(),
+      LastName: lastName.trim(),
+      DOB: dateOfBirth,
+      Approved: false
+    };
+
+    // Update student
+    await student.update(updates);
+
+    // Fetch updated student data
+    const updatedStudent = await Student.findByPk(id);
+    const ageCategory = calculateAgeCategory(updatedStudent.DOB);
+
+    // Prepare response
+    const responseData = {
+      ...updatedStudent.toJSON(),
+      AgeCategory: ageCategory
+    };
+
+    // Send success response
+    res.status(200).json({
+      message: "Student profile updated successfully",
+      student: responseData
+    });
+
+  } catch (error) {
+    console.error("Error updating student profile:", error);
+    res.status(500).json({
+      message: "Failed to update student profile",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};

@@ -134,7 +134,7 @@ module.exports = function(app) {
 
   app.get(
     "/api/users/getStudentById/:id",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Parent"])],
     controller.getStudentById
   )
 
@@ -143,4 +143,16 @@ module.exports = function(app) {
     [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Parent"])],
     controller.updateStudent
   )
+
+  app.put(
+    "/api/users/approveStudent/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.approveStudent
+  );
+
+  app.put(
+    "/api/users/deactivateStudent/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.deactivateStudent
+  );
 };

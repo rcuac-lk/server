@@ -701,3 +701,52 @@ exports.updateStudent = async (req, res) => {
     });
   }
 };
+
+exports.approveStudent = async (req, res) => {
+  try {
+    const student = await Student.findByPk(req.params.id);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found." });
+    }
+
+    student.Approved = true;
+    await student.save();
+
+    const ageCategory = calculateAgeCategory(student.DOB);
+    const responseData = {
+      ...student.toJSON(),
+      AgeCategory: ageCategory
+    };
+
+    res.status(200).json({
+      message: "Student approved successfully!",
+      student: responseData
+    });
+  } catch (error) {
+    console.error("Error approving student:", error);
+    res.status(500).json({
+      message: "Failed to approve student",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+exports.deactivateStudent = async (req, res) => {
+  try {
+    const student = await Student.findByPk(req.params.id);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found." });
+    }
+
+    student.Active = false;
+    await student.save();
+
+    res.status(200).json({ message: "Student deactivated successfully!" });
+  } catch (error) {
+    console.error("Error deactivating student:", error);
+    res.status(500).json({
+      message: "Failed to deactivate student",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
