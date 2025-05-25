@@ -133,60 +133,94 @@ exports.updateAdmin = (req, res) => {
     });
 };
 
-exports.updateProfile = (req, res) => {
-  User.findByPk(req.params.id)
-    .then(user => {
-      if (!user) {
-        return res.status(404).send({ message: "User not found." });
-      }
+exports.updateProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { FirstName, LastName, Email, Role } = req.body;
 
-      user.FirstName = req.body.FirstName;
-      user.LastName = req.body.LastName;
-      user.Email = req.body.Email;
-      
-      if (user.Role !== req.body.Role) {
-        user.Role = req.body.Role;
-        if (user.Role === "Admin") {
-          // sendEmail(user.Email, "Role Update", "Your role has been updated to Admin.");
-          console.log("Your role has been updated to Admin.");
-        }
-      }
+    // Input validation
+    if (!FirstName || !LastName || !Email) {
+      return res.status(400).json({
+        message: "Required fields are missing",
+        required: ["FirstName", "LastName", "Email"]
+      });
+    }
 
-      user.save()
-        .then(() => {
-          // Fetch the updated user details from the database
-          return db.query("SELECT * FROM users WHERE id = ?", [user.UserID]);
-        })
-        .then(([rows]) => {
-          if (rows.length === 0) {
-            throw new Error("User not found after update");
-          }
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(Email)) {
+      return res.status(400).json({
+        message: "Invalid email format"
+      });
+    }
 
-          // Extract the user data
-          const { UserID, FirstName, LastName, Email, Role, Approved } = rows[0];
+    // Find user
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
 
-          // Construct the response object
-          const responseData = {
-            id: UserID,
-            firstName: FirstName,
-            lastName: LastName,
-            email: Email,
-            roles: Role,
-            accessToken: token, // Assuming `token` is defined elsewhere
-            refreshToken: refreshToken, // Assuming `refreshToken` is defined elsewhere
-            approved: Approved
-          };
-
-          // Send the response
-          res.status(200).send(responseData);
-        })
-        .catch(err => {
-          res.status(500).send({ message: err.message });
+    // Check if email is already taken by another user
+    if (Email !== user.Email) {
+      const existingUser = await User.findOne({
+        where: { Email }
+      });
+      if (existingUser) {
+        return res.status(400).json({
+          message: "Email is already in use"
         });
-      })
-    .catch(err => {
-      res.status(500).send({ message: err.message });
+      }
+    }
+
+    // Update user fields
+    const updates = {
+      FirstName: FirstName.trim(),
+      LastName: LastName.trim(),
+      Email: Email.trim()
+    };
+
+    // Only update role if provided and different
+    if (Role && Role !== user.Role) {
+      updates.Role = Role;
+      if (Role === "Admin") {
+        // TODO: Implement email notification
+        console.log(`Role updated to Admin for user: ${Email}`);
+      }
+    }
+
+    // Update user
+    await user.update(updates);
+
+    // Fetch updated user data
+    const updatedUser = await User.findByPk(id, {
+      attributes: { exclude: ['Password'] }
     });
+
+    // Prepare response
+    const responseData = {
+      id: updatedUser.UserID,
+      firstName: updatedUser.FirstName,
+      lastName: updatedUser.LastName,
+      email: updatedUser.Email,
+      roles: updatedUser.Role,
+      approved: updatedUser.Approved
+    };
+
+    // Send success response
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: responseData
+    });
+
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({
+      message: "Failed to update profile",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
 
 exports.updatePassword = (req, res) => {
@@ -542,5 +576,128 @@ exports.markTiming = async(req, res) => {
   } catch (error) {
     console.error("Error recording timing:", error);
     res.status(500).json({ message: "Failed to record timing" });
+  }
+};
+
+exports.getAllStudents = async (req, res) => {
+  try {
+    const students = await Student.findAll({ where: { Active: true } });
+    
+    // Add age category to each student
+    const studentsWithAgeCategory = students.map(student => {
+      const ageCategory = calculateAgeCategory(student.DOB);
+      return {
+        ...student.toJSON(),
+        AgeCategory: ageCategory
+      };
+    });
+
+    res.status(200).json(studentsWithAgeCategory);
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    res.status(500).json({ message: "Failed to fetch students" });
+  }
+};
+
+exports.getStudentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findByPk(id, { where: { Active: true } });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+    res.status(200).json(student);
+  } catch (error) {
+    console.error("Error fetching student by ID:", error);
+    res.status(500).json({ message: "Failed to fetch student by ID" });
+  }
+};
+
+exports.updateStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(id)
+    const { admissionNumber, firstName, lastName, dateOfBirth } = req.body;
+
+    // Input validation
+    if (!id || !admissionNumber || !firstName || !lastName || !dateOfBirth) {
+      return res.status(400).json({
+        message: "Required fields are missing",
+        required: ["id", "admissionNumber", "firstName", "lastName", "dateOfBirth"]
+      });
+    }
+
+    // Find student
+    const student = await Student.findByPk(id);
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found"
+      });
+    }
+
+    // Check if admission number is already taken by another student
+    if (admissionNumber !== student.AdmissionNumber) {
+      const existingStudent = await Student.findOne({
+        where: { 
+          AdmissionNumber: admissionNumber,
+          StudentID: { [Op.ne]: id } // Exclude current student
+        }
+      });
+      if (existingStudent) {
+        return res.status(400).json({
+          message: "Admission number is already in use"
+        });
+      }
+    }
+
+    // Validate age (must be below 19)
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age >= 19) {
+      return res.status(400).json({
+        message: "Student must be below 19 years old"
+      });
+    }
+
+    // Update student fields
+    const updates = {
+      AdmissionNumber: admissionNumber.trim(),
+      FirstName: firstName.trim(),
+      LastName: lastName.trim(),
+      DOB: dateOfBirth
+    };
+
+    // Update student
+    await student.update(updates);
+
+    // Fetch updated student data
+    const updatedStudent = await Student.findByPk(id);
+    const ageCategory = calculateAgeCategory(updatedStudent.DOB);
+
+    // Prepare response
+    const responseData = {
+      ...updatedStudent.toJSON(),
+      AgeCategory: ageCategory
+    };
+
+    // Send success response
+    res.status(200).json({
+      message: "Student profile updated successfully",
+      student: responseData
+    });
+
+  } catch (error) {
+    console.error("Error updating student profile:", error);
+    res.status(500).json({
+      message: "Failed to update student profile",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };

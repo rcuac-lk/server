@@ -21,4 +21,16 @@ module.exports = function(app) {
     [authJwt.verifyToken],
     controller.searchUsers
   );
+
+  app.post(
+    "/api/parent/addStudent",
+    [authJwt.verifyToken, authJwt.isParent],
+    controller.addStudent
+  );
+
+  app.get(
+    "/api/parent/getStudents/:id",
+    [authJwt.verifyToken, authJwt.isParent],
+    controller.getStudents
+  );
 };

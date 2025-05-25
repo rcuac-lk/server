@@ -1,5 +1,6 @@
 const db = require('../models');
 const User = db.user;
+const Student = db.student;
 const { Op, Sequelize } = require("sequelize");
 
 exports.getUser = (req, res) => {
@@ -43,4 +44,41 @@ exports.searchUsers = async (req, res) => {
     console.error("Error searching users:", error);
     res.status(500).json({ message: "Internal server error" });
   }
+};
+
+exports.addStudent = (req, res) => {
+  const { admissionNumber, firstName, lastName, dateOfBirth, parentId } = req.body;
+
+  //check for existing student
+  
+  const student = async() => await Student.findOne({ where: { AdmissionNumber: admissionNumber } });
+  if (student) {
+    return res.status(400).json({ message: "Student already exists" });
+  }
+
+  Student.create({
+    AdmissionNumber: admissionNumber,
+    FirstName: firstName,
+    LastName: lastName,
+    DOB: dateOfBirth,
+    ParentID: parentId,
+    Active: true,
+    Approved: false
+  })
+    .then(student => {
+      res.status(200).json(student);
+    })
+    .catch(err => {
+      res.status(500).json({ message: err.message });
+    });
+};
+
+exports.getStudents = (req, res) => {
+  Student.findAll({ where: { ParentID: req.params.id, Active: true } })
+    .then(students => {
+      res.status(200).json(students);
+    })
+    .catch(err => {
+      res.status(500).json({ message: err.message });
+    });
 };

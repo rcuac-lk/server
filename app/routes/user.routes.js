@@ -125,4 +125,22 @@ module.exports = function(app) {
     [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.markTiming
   )
+
+  app.get(
+    "/api/users/getAllStudents",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.getAllStudents
+  )
+
+  app.get(
+    "/api/users/getStudentById/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.getStudentById
+  )
+
+  app.post(
+    "/api/users/updateStudent/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Parent"])],
+    controller.updateStudent
+  )
 };
