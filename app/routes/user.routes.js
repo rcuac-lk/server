@@ -155,4 +155,10 @@ module.exports = function(app) {
     [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
     controller.deactivateStudent
   );
+
+  app.put(
+    "/api/users/updatePassword/:id",
+    [authJwt.verifyToken],
+    controller.updatePassword
+  )
 };

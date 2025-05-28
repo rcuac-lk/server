@@ -7,6 +7,7 @@ const Distance = db.distance;
 const Attendance = db.attendance;
 const Student = db.student;
 const { Op, Sequelize } = require("sequelize");
+const bcrypt = require("bcryptjs");
 // exports.allAccess = (req, res) => {
 //   res.status(200).send("Public Content.");
 // };
@@ -230,11 +231,16 @@ exports.updatePassword = (req, res) => {
         return res.status(404).send({ message: "User not found." });
       }
 
-      if (user.Password !== req.body.oldPassword) {
+      const passwordIsValid = bcrypt.compareSync(
+        req.body.oldPassword,
+        user.Password
+      );
+
+      if (!passwordIsValid) {
         return res.status(400).send({ message: "Incorrect old password." });
       }
 
-      user.Password = req.body.newPassword;
+      user.Password = bcrypt.hashSync(req.body.newPassword, 8);
 
       user.save()
         .then(() => {
