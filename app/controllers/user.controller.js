@@ -674,7 +674,7 @@ exports.updateStudent = async (req, res) => {
 
     // Update student fields
     const updates = {
-      AdmissionNumber: admissionNumber.trim(),
+      AdmissionNumber: Number(admissionNumber),
       FirstName: firstName.trim(),
       LastName: lastName.trim(),
       DOB: dateOfBirth
