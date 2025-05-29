@@ -103,7 +103,7 @@ exports.updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
     console.log(id)
-    const { admissionNumber, firstName, lastName, dateOfBirth } = req.body;
+    const { admissionNumber, firstName, lastName, dateOfBirth, comment } = req.body;
 
     // Input validation
     if (!id || !admissionNumber || !firstName || !lastName || !dateOfBirth) {
@@ -158,7 +158,8 @@ exports.updateStudent = async (req, res) => {
       FirstName: firstName.trim(),
       LastName: lastName.trim(),
       DOB: dateOfBirth,
-      Approved: false
+      Approved: false,
+      Comment: comment
     };
 
     // Update student

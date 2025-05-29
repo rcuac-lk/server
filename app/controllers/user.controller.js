@@ -716,6 +716,7 @@ exports.approveStudent = async (req, res) => {
     }
 
     student.Approved = true;
+    student.Comment = '';
     await student.save();
 
     const ageCategory = calculateAgeCategory(student.DOB);

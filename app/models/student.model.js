@@ -29,6 +29,9 @@ module.exports = (sequelize, Sequelize) => {
         model: 'users',
         key: 'UserID'
       }
+    },
+    Comment: {
+      type: Sequelize.STRING(100)
     }
   });
 
