@@ -122,10 +122,10 @@ exports.updateStudent = async (req, res) => {
     }
 
     // Check if admission number is already taken by another student
-    if (admissionNumber !== student.AdmissionNumber) {
+    if (admissionNumber.trim() !== student.AdmissionNumber.toString().trim()) {
       const existingStudent = await Student.findOne({
         where: { 
-          AdmissionNumber: admissionNumber,
+          AdmissionNumber: admissionNumber.trim(),
           StudentID: { [Op.ne]: id } // Exclude current student
         }
       });
@@ -154,7 +154,7 @@ exports.updateStudent = async (req, res) => {
 
     // Update student fields
     const updates = {
-      AdmissionNumber: Number(admissionNumber),
+      AdmissionNumber: admissionNumber.trim(),
       FirstName: firstName.trim(),
       LastName: lastName.trim(),
       DOB: dateOfBirth,
