@@ -46,13 +46,12 @@ exports.searchUsers = async (req, res) => {
   }
 };
 
-exports.addStudent = (req, res) => {
+exports.addStudent = async (req, res) => {
   const { admissionNumber, firstName, lastName, dateOfBirth, parentId } = req.body;
 
   //check for existing student
-  
-  const student = async() => await Student.findOne({ where: { AdmissionNumber: admissionNumber } });
-  if (student) {
+  const existingStudent = await Student.findOne({ where: { AdmissionNumber: admissionNumber } });
+  if (existingStudent) {
     return res.status(400).json({ message: "Student already exists" });
   }
 
