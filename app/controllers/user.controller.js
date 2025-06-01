@@ -397,9 +397,14 @@ exports.getAttendancedata = async (req, res) => {
     }
 
     const students = await Student.findAll();
+    // Filter students based on valid age categories
+    const validStudents = students.filter(student => {
+      const ageCategory = calculateAgeCategory(student.DOB);
+      return ageCategory !== undefined; // Only include students with valid age categories
+    });
     const response = [];
 
-    for (const student of students) {
+    for (const student of validStudents) {
       // Calculate age category for the student
       const ageCategory = calculateAgeCategory(student.DOB);
       
@@ -589,14 +594,16 @@ exports.getAllStudents = async (req, res) => {
   try {
     const students = await Student.findAll({ where: { Active: true } });
     
-    // Add age category to each student
-    const studentsWithAgeCategory = students.map(student => {
-      const ageCategory = calculateAgeCategory(student.DOB);
-      return {
+    // Filter students based on valid age categories and add age category
+    const studentsWithAgeCategory = students
+      .filter(student => {
+        const ageCategory = calculateAgeCategory(student.DOB);
+        return ageCategory !== undefined; // Only include students with valid age categories
+      })
+      .map(student => ({
         ...student.toJSON(),
-        AgeCategory: ageCategory
-      };
-    });
+        AgeCategory: calculateAgeCategory(student.DOB)
+      }));
 
     res.status(200).json(studentsWithAgeCategory);
   } catch (error) {
@@ -786,7 +793,14 @@ exports.getAttendancedataForReport = async (req, res) => {
 
     // First get all students based on the query
     const students = await Student.findAll({ where: studentQuery });
-    const studentIds = students.map(student => student.StudentID);
+    
+    // Filter students based on valid age categories
+    const validStudents = students.filter(student => {
+      const ageCategory = calculateAgeCategory(student.DOB);
+      return ageCategory !== undefined; // Only include students with valid age categories
+    });
+
+    const studentIds = validStudents.map(student => student.StudentID);
 
     // Get all attendance records within the date range for these students
     const attendanceRecords = await Attendance.findAll({
@@ -833,8 +847,8 @@ exports.getAttendancedataForReport = async (req, res) => {
     // Group attendance records by student
     const studentAttendanceMap = new Map();
 
-    // Initialize map with all students
-    students.forEach(student => {
+    // Initialize map with all valid students
+    validStudents.forEach(student => {
       studentAttendanceMap.set(student.StudentID, {
         UserID: student.StudentID,
         AdmissionNumber: student.AdmissionNumber,
@@ -902,7 +916,14 @@ exports.getTimingDataForReport = async (req, res) => {
 
     // First get all students based on the query
     const students = await Student.findAll({ where: studentQuery });
-    const studentIds = students.map(student => student.StudentID);
+    
+    // Filter students based on valid age categories
+    const validStudents = students.filter(student => {
+      const ageCategory = calculateAgeCategory(student.DOB);
+      return ageCategory !== undefined; // Only include students with valid age categories
+    });
+
+    const studentIds = validStudents.map(student => student.StudentID);
 
     // Get all performance records within the date range for these students
     const performanceRecords = await db.performance.findAll({
@@ -973,8 +994,8 @@ exports.getTimingDataForReport = async (req, res) => {
     // Group performance records by student
     const studentPerformanceMap = new Map();
 
-    // Initialize map with all students
-    students.forEach(student => {
+    // Initialize map with all valid students
+    validStudents.forEach(student => {
       studentPerformanceMap.set(student.StudentID, {
         UserID: student.StudentID,
         AdmissionNumber: student.AdmissionNumber,
