@@ -757,3 +757,263 @@ exports.deactivateStudent = async (req, res) => {
     });
   }
 };
+
+exports.getAttendancedataForReport = async (req, res) => {
+  try {
+    const { startDate, endDate, userID } = req.query;
+
+    if (!startDate || !endDate || !userID) {
+      return res.status(400).json({ message: "Missing required parameters" });
+    }
+
+    // Get user role
+    const user = await User.findByPk(userID);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prepare date range
+    const startOfRange = new Date(startDate + 'T00:00:00.000Z');
+    const endOfRange = new Date(endDate + 'T23:59:59.999Z');
+
+    // Base query for students
+    let studentQuery = { Active: true };
+    
+    // If user is a parent, only get their students
+    if (user.Role === "Parent") {
+      studentQuery.ParentID = userID;
+    }
+
+    // First get all students based on the query
+    const students = await Student.findAll({ where: studentQuery });
+    const studentIds = students.map(student => student.StudentID);
+
+    // Get all attendance records within the date range for these students
+    const attendanceRecords = await Attendance.findAll({
+      where: {
+        StudentID: {
+          [Op.in]: studentIds
+        },
+        AttendanceDate: {
+          [Op.between]: [startOfRange, endOfRange]
+        }
+      },
+      order: [
+        ['StudentID', 'ASC'],
+        ['AttendanceDate', 'ASC']
+      ]
+    });
+
+    // Get all users who marked attendance
+    const markedByUserIds = [...new Set(attendanceRecords.map(record => record.MarkedBy))];
+    const markedByUsers = await User.findAll({
+      where: {
+        UserID: {
+          [Op.in]: markedByUserIds
+        }
+      },
+      attributes: ['UserID', 'FirstName', 'LastName']
+    });
+
+    // Get all unique session IDs from attendance records
+    const sessionIds = [...new Set(attendanceRecords.map(record => record.SessionID))];
+    const sessions = await Session.findAll({
+      where: {
+        id: {
+          [Op.in]: sessionIds
+        }
+      },
+      attributes: ['id', 'sessionName']
+    });
+
+    // Create maps for quick lookups
+    const userMap = new Map(markedByUsers.map(user => [user.UserID, user]));
+    const sessionMap = new Map(sessions.map(session => [session.id, session.sessionName]));
+
+    // Group attendance records by student
+    const studentAttendanceMap = new Map();
+
+    // Initialize map with all students
+    students.forEach(student => {
+      studentAttendanceMap.set(student.StudentID, {
+        UserID: student.StudentID,
+        AdmissionNumber: student.AdmissionNumber,
+        FirstName: student.FirstName,
+        LastName: student.LastName,
+        AgeCategory: calculateAgeCategory(student.DOB),
+        bestTiming: student.bestTiming,
+        attendanceRecords: []
+      });
+    });
+
+    // Add attendance records to respective students
+    attendanceRecords.forEach(record => {
+      const studentId = record.StudentID;
+      if (studentAttendanceMap.has(studentId)) {
+        const markedByUser = userMap.get(record.MarkedBy);
+        const sessionName = sessionMap.get(record.SessionID) || 'Unknown Session';
+        
+        studentAttendanceMap.get(studentId).attendanceRecords.push({
+          date: record.AttendanceDate,
+          status: record.Present ? "Present" : "Absent",
+          markedBy: markedByUser ? `${markedByUser.FirstName} ${markedByUser.LastName}` : "Unknown",
+          markedAt: new Date(record.MarkedAt).toLocaleString(),
+          sessionId: record.SessionID,
+          sessionName: sessionName
+        });
+      }
+    });
+
+    // Convert map to array for response
+    const response = Array.from(studentAttendanceMap.values());
+
+    res.status(200).json({ attendanceData: response });
+  } catch (error) {
+    console.error("Error fetching student attendance:", error);
+    res.status(500).json({ message: "Failed to retrieve student data" });
+  }
+};
+
+exports.getTimingDataForReport = async (req, res) => {
+  try {
+    const { startDate, endDate, userID } = req.query;
+
+    if (!startDate || !endDate || !userID) {
+      return res.status(400).json({ message: "Missing required parameters" });
+    }
+
+    // Get user role
+    const user = await User.findByPk(userID);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prepare date range
+    const startOfRange = new Date(startDate + 'T00:00:00.000Z');
+    const endOfRange = new Date(endDate + 'T23:59:59.999Z');
+
+    // Base query for students
+    let studentQuery = { Active: true };
+    
+    // If user is a parent, only get their students
+    if (user.Role === "Parent") {
+      studentQuery.ParentID = userID;
+    }
+
+    // First get all students based on the query
+    const students = await Student.findAll({ where: studentQuery });
+    const studentIds = students.map(student => student.StudentID);
+
+    // Get all performance records within the date range for these students
+    const performanceRecords = await db.performance.findAll({
+      where: {
+        StudentID: {
+          [Op.in]: studentIds
+        },
+        PerformanceDate: {
+          [Op.between]: [startOfRange, endOfRange]
+        }
+      },
+      order: [
+        ['StudentID', 'ASC'],
+        ['PerformanceDate', 'ASC']
+      ]
+    });
+
+    // Get all users who recorded performances
+    const recordedByUserIds = [...new Set(performanceRecords.map(record => record.RecordedBy))];
+    const recordedByUsers = await User.findAll({
+      where: {
+        UserID: {
+          [Op.in]: recordedByUserIds
+        }
+      },
+      attributes: ['UserID', 'FirstName', 'LastName']
+    });
+
+    // Get all unique session IDs from performance records
+    const sessionIds = [...new Set(performanceRecords.map(record => record.SessionID))];
+    const sessions = await Session.findAll({
+      where: {
+        id: {
+          [Op.in]: sessionIds
+        }
+      },
+      attributes: ['id', 'sessionName']
+    });
+
+    // Get all unique event IDs from performance records
+    const eventIds = [...new Set(performanceRecords.map(record => record.EventID))];
+    const events = await EventType.findAll({
+      where: {
+        EventID: {
+          [Op.in]: eventIds
+        }
+      },
+      attributes: ['EventID', 'EventName']
+    });
+
+    // Get all unique distance IDs from performance records
+    const distanceIds = [...new Set(performanceRecords.map(record => record.DistanceID))];
+    const distances = await Distance.findAll({
+      where: {
+        id: {
+          [Op.in]: distanceIds
+        }
+      },
+      attributes: ['id', 'length']
+    });
+
+    // Create maps for quick lookups
+    const userMap = new Map(recordedByUsers.map(user => [user.UserID, user]));
+    const sessionMap = new Map(sessions.map(session => [session.id, session.sessionName]));
+    const eventMap = new Map(events.map(event => [event.EventID, event.EventName]));
+    const distanceMap = new Map(distances.map(distance => [distance.id, `${distance.length}m`]));
+
+    // Group performance records by student
+    const studentPerformanceMap = new Map();
+
+    // Initialize map with all students
+    students.forEach(student => {
+      studentPerformanceMap.set(student.StudentID, {
+        UserID: student.StudentID,
+        AdmissionNumber: student.AdmissionNumber,
+        FirstName: student.FirstName,
+        LastName: student.LastName,
+        AgeCategory: calculateAgeCategory(student.DOB),
+        bestTiming: student.bestTiming,
+        performanceRecords: []
+      });
+    });
+
+    // Add performance records to respective students
+    performanceRecords.forEach(record => {
+      const studentId = record.StudentID;
+      if (studentPerformanceMap.has(studentId)) {
+        const recordedByUser = userMap.get(record.RecordedBy);
+        const sessionName = sessionMap.get(record.SessionID) || 'Unknown Session';
+        const eventName = eventMap.get(record.EventID) || 'Unknown Event';
+        const distance = distanceMap.get(record.DistanceID) || 'Unknown Distance';
+        
+        studentPerformanceMap.get(studentId).performanceRecords.push({
+          date: record.PerformanceDate,
+          time: record.Time,
+          event: eventName,
+          distance: distance,
+          recordedBy: recordedByUser ? `${recordedByUser.FirstName} ${recordedByUser.LastName}` : "Unknown",
+          recordedAt: new Date(record.createdAt).toLocaleString(),
+          sessionId: record.SessionID,
+          sessionName: sessionName
+        });
+      }
+    });
+
+    // Convert map to array for response
+    const response = Array.from(studentPerformanceMap.values());
+
+    res.status(200).json({ performanceData: response });
+  } catch (error) {
+    console.error("Error fetching student performance data:", error);
+    res.status(500).json({ message: "Failed to retrieve student performance data" });
+  }
+};

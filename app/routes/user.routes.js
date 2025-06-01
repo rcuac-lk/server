@@ -161,4 +161,16 @@ module.exports = function(app) {
     [authJwt.verifyToken],
     controller.updatePassword
   )
+
+  app.get(
+    "/api/users/getAttendancedataForReport",
+    [authJwt.verifyToken],
+    controller.getAttendancedataForReport
+  )
+
+  app.get(
+    "/api/users/getTimingDataForReport",
+    [authJwt.verifyToken],
+    controller.getTimingDataForReport
+  )
 };
