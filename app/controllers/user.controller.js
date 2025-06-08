@@ -361,27 +361,66 @@ exports.getEventLengths = async (req, res) => {
   }
 }
 
-function calculateAgeCategory(dob) {
-  const today = new Date();
-  const birthDate = new Date(dob);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
 
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
+/** define the calculation base date. Month is Zero based and the date is 1 based. */
+const constTagrgetBaseMonthForAgeUpdate = 11; //December
+const constTagrgetBaseDateForAgeUpdate = 31; //31st
+const constTagrgetBaseYearAdjustmentForAgeUpdate = -1;
 
-  if (age <= 10) return "Under 11";
-  if (age <= 12) return "Under 13";
-  if (age <= 14) return "Under 15";
-  if (age <= 16) return "Under 17";
-  if (age <= 18) return "Under 19";
+/** Get Age calculation base date 
+ * This function returns the age calculation base date in local time.
+ */
+function getAgeCalculationBaseDate() {
+  // Calculate the timestamp for December 31st of the previous year at midnight UTC
+  const currentYear = new Date().getFullYear();
+  const targetYear = currentYear + constTagrgetBaseYearAdjustmentForAgeUpdate;
+  const targetDate = new Date(targetYear, constTagrgetBaseMonthForAgeUpdate, constTagrgetBaseDateForAgeUpdate, 0, 0, 0, 0);  
+  //console.log('Calculation Base date ['+ targetDate.toDateString() + ']');
+  return targetDate;
 }
+
+/** Get Age Category 
+ * This function returns the age category based on the given DOB and calculation base date.
+ * both dob and calculationBaseDate should be in the same timezone. (local). If the age is not
+ * within the age category table, it returns undefined.
+ * @param {*} dob Date of birth
+ * @param {*} calculationBaseDate Calculation base date
+ * @param {*} ageCategoryTable Age category table
+ * @returns 
+ */
+function calculateAgeCategory(dob,calculationBaseDate,ageCategoryTable) {
+  console.log("+Fn calculateAgeCategory DOB [" + dob.toDateString() + "] Calculation Base Date [" + calculationBaseDate.toDateString() + "]");
+  let age = calculationBaseDate.getFullYear() - dob.getFullYear();
+  /** check if his birthday has passed by the calculation base date */ 
+  dob.setFullYear(calculationBaseDate.getFullYear());
+  //console.log('Calculation base year birthday [' + dob.toDateString() + ']');
+  if(calculationBaseDate < dob) {
+    /** birth day not passed */
+    age --;
+  }
+  //console.log('Age as of ['+ calculationBaseDate.toDateString() +'] = ['+ age +']');
+  /** find the age category */
+  for (let x in ageCategoryTable) {
+    if(ageCategoryTable[x].MinAge <= age && age <= ageCategoryTable[x].MaxAge) {
+      console.log("-Fn calculateAgeCategory for age [" + age + "] is [" + ageCategoryTable[x].category + "]");
+      return ageCategoryTable[x].category;
+    }
+  }
+  console.log("-Fn calculateAgeCategory => No age category found for age [" + age + "]");
+  return undefined;
+}
+
+/** Get Attendance data 
+ * This function returns the attendance data based on the given date, session and age filter.
+ * @param {*} req 
+ * @param {*} res 
+ * @returns 
+ */
 
 exports.getAttendancedata = async (req, res) => {
   try {
     const { date, session, age } = req.query;
-
+    //console.log("+Fn getAttendancedata [ " , date, session, age, "]");
     // Check if date or session is invalid or empty
     const isInvalidFilter = !date || !session;
 
@@ -395,19 +434,19 @@ exports.getAttendancedata = async (req, res) => {
         ageCategoryFilter = ageCategoryData.category;
       }
     }
-
-    const students = await Student.findAll();
-    // Filter students based on valid age categories
-    const validStudents = students.filter(student => {
-      const ageCategory = calculateAgeCategory(student.DOB);
-      return ageCategory !== undefined; // Only include students with valid age categories
-    });
+    //Get student list and the age categories from the database
+    const students = await Student.findAll({ where: { Active: true } });
+    const ageCategories = await AgeCategory.findAll();
     const response = [];
 
-    for (const student of validStudents) {
+    for (const student of students) {
+      console.log("+Fn getAttendancedata => student = [", student.FirstName + " " + student.LastName, "]");
       // Calculate age category for the student
-      const ageCategory = calculateAgeCategory(student.DOB);
-      
+      const ageCategory = calculateAgeCategory(new Date(student.DOB),getAgeCalculationBaseDate(),ageCategories);
+      // Skip if Age Category is undefined
+      if (ageCategory === undefined) {
+        continue;
+      }      
       // Skip if age filter is set and doesn't match
       if (ageCategoryFilter && ageCategory !== ageCategoryFilter) {
         continue;
@@ -590,20 +629,28 @@ exports.markTiming = async(req, res) => {
   }
 };
 
+/** getAllStudents(req, res)
+ * This function returns a list of all students in the database.
+ * @param {*} req 
+ * @param {*} res 
+ */
 exports.getAllStudents = async (req, res) => {
   try {
     const students = await Student.findAll({ where: { Active: true } });
-    
+    const ageCategories = await AgeCategory.findAll();
     // Filter students based on valid age categories and add age category
     const studentsWithAgeCategory = students
       .filter(student => {
-        const ageCategory = calculateAgeCategory(student.DOB);
+        const ageCategory = calculateAgeCategory(new Date(student.DOB),getAgeCalculationBaseDate(),ageCategories);
         return ageCategory !== undefined; // Only include students with valid age categories
       })
-      .map(student => ({
-        ...student.toJSON(),
-        AgeCategory: calculateAgeCategory(student.DOB)
-      }));
+      .map(student => {
+        const ageCategory = calculateAgeCategory(new Date(student.DOB),getAgeCalculationBaseDate(),ageCategories);
+        return {
+          ...student.toJSON(),
+          AgeCategory: ageCategory
+        };
+      });
 
     res.status(200).json(studentsWithAgeCategory);
   } catch (error) {
@@ -626,13 +673,16 @@ exports.getStudentById = async (req, res) => {
   }
 };
 
+/** updateStudent(req, res)
+ * This function updates a student's information in the database.
+ * @param {*} req 
+ * @param {*} res 
+ */
 exports.updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(id)
     const { admissionNumber, firstName, lastName, dateOfBirth } = req.body;
-
-    // Input validation
+    console.log("+Fn updateStudent id ["+ id+ "]"+ "  admissionNumber ["+ admissionNumber+ "]"+ " firstName ["+ firstName+ "]"+ " lastName ["+ lastName+ "]"+ " dateOfBirth ["+ dateOfBirth+ "]");    // Input validation
     if (!id || !admissionNumber || !firstName || !lastName || !dateOfBirth) {
       return res.status(400).json({
         message: "Required fields are missing",
@@ -663,22 +713,15 @@ exports.updateStudent = async (req, res) => {
       }
     }
 
-    // Validate age (must be below 19)
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
+    // Get age categories and validate age
+    const ageCategories = await AgeCategory.findAll();
+    const ageCategory = calculateAgeCategory(new Date(dateOfBirth), getAgeCalculationBaseDate(), ageCategories);
 
-    if (age >= 19) {
+    if (ageCategory === undefined) {
       return res.status(400).json({
-        message: "Student must be below 19 years old"
+        message: "Student's age is not within the allowed range"
       });
     }
-
     // Update student fields
     const updates = {
       AdmissionNumber: String(admissionNumber).trim(),
@@ -687,20 +730,16 @@ exports.updateStudent = async (req, res) => {
       DOB: dateOfBirth
     };
 
-    // Update student
+    // Update and fetch student
     await student.update(updates);
-
-    // Fetch updated student data
     const updatedStudent = await Student.findByPk(id);
-    const ageCategory = calculateAgeCategory(updatedStudent.DOB);
 
     // Prepare response
     const responseData = {
       ...updatedStudent.toJSON(),
       AgeCategory: ageCategory
     };
-
-    // Send success response
+    console.log("-Fn updateStudent ",responseData);
     res.status(200).json({
       message: "Student profile updated successfully",
       student: responseData
@@ -715,9 +754,15 @@ exports.updateStudent = async (req, res) => {
   }
 };
 
+/** approveStudent(req, res)
+ * This function approves a student's profile.
+ * @param {*} req 
+ * @param {*} res 
+ */
 exports.approveStudent = async (req, res) => {
   try {
     const student = await Student.findByPk(req.params.id);
+    const ageCategories = await AgeCategory.findAll();
     if (!student) {
       return res.status(404).json({ message: "Student not found." });
     }
@@ -726,7 +771,7 @@ exports.approveStudent = async (req, res) => {
     student.Comment = '';
     await student.save();
 
-    const ageCategory = calculateAgeCategory(student.DOB);
+    const ageCategory = calculateAgeCategory(new Date(student.DOB), getAgeCalculationBaseDate(), ageCategories);
     const responseData = {
       ...student.toJSON(),
       AgeCategory: ageCategory
@@ -745,6 +790,11 @@ exports.approveStudent = async (req, res) => {
   }
 };
 
+/** deactivateStudent(req, res)
+ * This function deactivates a student's profile.
+ * @param {*} req 
+ * @param {*} res 
+ */
 exports.deactivateStudent = async (req, res) => {
   try {
     const student = await Student.findByPk(req.params.id);
@@ -793,10 +843,11 @@ exports.getAttendancedataForReport = async (req, res) => {
 
     // First get all students based on the query
     const students = await Student.findAll({ where: studentQuery });
+    const ageCategories = await AgeCategory.findAll();
     
     // Filter students based on valid age categories
     const validStudents = students.filter(student => {
-      const ageCategory = calculateAgeCategory(student.DOB);
+      const ageCategory = calculateAgeCategory(new Date(student.DOB), getAgeCalculationBaseDate(), ageCategories);
       return ageCategory !== undefined; // Only include students with valid age categories
     });
 
@@ -854,7 +905,7 @@ exports.getAttendancedataForReport = async (req, res) => {
         AdmissionNumber: student.AdmissionNumber,
         FirstName: student.FirstName,
         LastName: student.LastName,
-        AgeCategory: calculateAgeCategory(student.DOB),
+        AgeCategory: calculateAgeCategory(new Date(student.DOB),getAgeCalculationBaseDate(),ageCategories),
         bestTiming: student.bestTiming,
         attendanceRecords: []
       });
@@ -901,7 +952,8 @@ exports.getTimingDataForReport = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
+    // Get age categories
+    const ageCategories = await AgeCategory.findAll();
     // Prepare date range
     const startOfRange = new Date(startDate + 'T00:00:00.000Z');
     const endOfRange = new Date(endDate + 'T23:59:59.999Z');
@@ -919,7 +971,7 @@ exports.getTimingDataForReport = async (req, res) => {
     
     // Filter students based on valid age categories
     const validStudents = students.filter(student => {
-      const ageCategory = calculateAgeCategory(student.DOB);
+      const ageCategory = calculateAgeCategory(new Date(student.DOB),getAgeCalculationBaseDate(),ageCategories);
       return ageCategory !== undefined; // Only include students with valid age categories
     });
 
@@ -1001,7 +1053,7 @@ exports.getTimingDataForReport = async (req, res) => {
         AdmissionNumber: student.AdmissionNumber,
         FirstName: student.FirstName,
         LastName: student.LastName,
-        AgeCategory: calculateAgeCategory(student.DOB),
+        AgeCategory: calculateAgeCategory(new Date(student.DOB),getAgeCalculationBaseDate(),ageCategories),
         bestTiming: student.bestTiming,
         performanceRecords: []
       });
