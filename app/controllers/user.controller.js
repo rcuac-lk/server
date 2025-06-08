@@ -389,6 +389,9 @@ function getAgeCalculationBaseDate() {
  * @returns 
  */
 function calculateAgeCategory(dob,calculationBaseDate,ageCategoryTable) {
+  /** set the time to 00:00:00.000 */
+  dob.setHours(0,0,0,0);
+  calculationBaseDate.setHours(0,0,0,0);
   console.log("+Fn calculateAgeCategory DOB [" + dob.toDateString() + "] Calculation Base Date [" + calculationBaseDate.toDateString() + "]");
   let age = calculationBaseDate.getFullYear() - dob.getFullYear();
   /** check if his birthday has passed by the calculation base date */ 
@@ -396,9 +399,9 @@ function calculateAgeCategory(dob,calculationBaseDate,ageCategoryTable) {
   //console.log('Calculation base year birthday [' + dob.toDateString() + ']');
   if(calculationBaseDate < dob) {
     /** birth day not passed */
+    console.log("Fn calculateAgeCategory birth day not passed, so less one year.");
     age --;
   }
-  //console.log('Age as of ['+ calculationBaseDate.toDateString() +'] = ['+ age +']');
   /** find the age category */
   for (let x in ageCategoryTable) {
     if(ageCategoryTable[x].MinAge <= age && age <= ageCategoryTable[x].MaxAge) {
