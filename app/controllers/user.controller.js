@@ -447,6 +447,42 @@ exports.getAttendancedata = async (req, res) => {
         markedByFullName = markedByFirstName + " " + markedByLastName;
       }
 
+      // Get best timing from performance table considering the filters
+      const performances = await db.performance.findAll({
+        where: {
+          StudentID: student.StudentID,
+          ...(session && { SessionID: session }), // Only include if session filter is present
+          ...(date && { // Only include if date filter is present
+            PerformanceDate: {
+              [Op.between]: [
+                new Date(date + 'T00:00:00.000Z'),
+                new Date(date + 'T23:59:59.999Z')
+              ]
+            }
+          })
+        },
+        attributes: ['Time'],
+        order: [['Time', 'ASC']]
+      });
+
+      // Calculate best timing (lowest time)
+      let bestTiming = null;
+      if (performances.length > 0) {
+        // Convert all times to seconds for comparison
+        const timesInSeconds = performances.map(p => {
+          const [minutes, seconds] = p.Time.split(':').map(Number);
+          return minutes * 60 + seconds;
+        });
+        
+        // Find the minimum time
+        const minTimeInSeconds = Math.min(...timesInSeconds);
+        
+        // Convert back to MM:SS format
+        const minutes = Math.floor(minTimeInSeconds / 60);
+        const seconds = minTimeInSeconds % 60;
+        bestTiming = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+
       response.push({
         UserID: student.StudentID,
         AdmissionNumber: student.AdmissionNumber,
@@ -458,7 +494,7 @@ exports.getAttendancedata = async (req, res) => {
         AgeCategory: ageCategory,
         FirstName: student.FirstName,
         LastName: student.LastName,
-        bestTiming: student.bestTiming
+        bestTiming: bestTiming
       });
     }
 
@@ -1037,4 +1073,204 @@ exports.getTimingDataForReport = async (req, res) => {
     console.error("Error fetching student performance data:", error);
     res.status(500).json({ message: "Failed to retrieve student performance data" });
   }
+};
+
+exports.getLeaderboardDataForReport = async (req, res) => {
+  try {
+    const { startDate, endDate, userID, eventID, distanceID, ageCategory, sessionID } = req.body;
+    console.log(req.body);
+    // Validate required fields
+    if (!userID || !eventID || !distanceID || !ageCategory || !sessionID) {
+      return res.status(400).json({ 
+        message: "Missing required parameters",
+        required: {
+          userID: "User ID is required",
+          eventID: "Event ID is required",
+          distanceID: "Distance ID is required",
+          ageCategory: "Age Category is required",
+          sessionID: "Session ID is required"
+        }
+      });
+    }
+
+    // Validate at least one date is provided
+    if (!startDate && !endDate) {
+      return res.status(400).json({ 
+        message: "At least one date (startDate or endDate) is required"
+      });
+    }
+
+    // Get user role
+    const user = await User.findByPk(userID);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prepare date range
+    const startOfRange = startDate ? new Date(startDate + 'T00:00:00.000Z') : new Date(0);
+    const endOfRange = endDate ? new Date(endDate + 'T23:59:59.999Z') : new Date(startDate + 'T23:59:59.999Z');
+
+    // Base query for students
+    let studentQuery = { Active: true };
+    
+    // If user is a parent, only get their students
+    if (user.Role === "Parent") {
+      studentQuery.ParentID = userID;
+    }
+
+    // First get all students based on the query
+    const students = await Student.findAll({ where: studentQuery });
+    
+    // Filter students based on valid age categories
+    const validStudents = students.filter(student => {
+      const studentAgeCategory = calculateAgeCategory(student.DOB);
+      return studentAgeCategory !== undefined && 
+             studentAgeCategory === ageCategory; // Exact match with the provided age category
+    });
+
+    const studentIds = validStudents.map(student => student.StudentID);
+
+    // Build performance query
+    let performanceQuery = {
+      StudentID: {
+        [Op.in]: studentIds
+      },
+      PerformanceDate: {
+        [Op.between]: [startOfRange, endOfRange]
+      },
+      EventID: eventID,
+      DistanceID: distanceID,
+      SessionID: sessionID
+    };
+
+    // Get all performance records within the date range for these students
+    const performanceRecords = await db.performance.findAll({
+      where: performanceQuery,
+      order: [
+        ['StudentID', 'ASC'],
+        ['Time', 'ASC'] // Order by time ascending to get best times first
+      ]
+    });
+
+    // Get all users who recorded performances
+    const recordedByUserIds = [...new Set(performanceRecords.map(record => record.RecordedBy))];
+    const recordedByUsers = await User.findAll({
+      where: {
+        UserID: {
+          [Op.in]: recordedByUserIds
+        }
+      },
+      attributes: ['UserID', 'FirstName', 'LastName']
+    });
+
+    // Get all unique session IDs from performance records
+    const sessionIds = [...new Set(performanceRecords.map(record => record.SessionID))];
+    const sessions = await Session.findAll({
+      where: {
+        id: {
+          [Op.in]: sessionIds
+        }
+      },
+      attributes: ['id', 'sessionName']
+    });
+
+    // Get all unique event IDs from performance records
+    const eventIds = [...new Set(performanceRecords.map(record => record.EventID))];
+    const events = await EventType.findAll({
+      where: {
+        EventID: {
+          [Op.in]: eventIds
+        }
+      },
+      attributes: ['EventID', 'EventName']
+    });
+
+    // Get all unique distance IDs from performance records
+    const distanceIds = [...new Set(performanceRecords.map(record => record.DistanceID))];
+    const distances = await Distance.findAll({
+      where: {
+        id: {
+          [Op.in]: distanceIds
+        }
+      },
+      attributes: ['id', 'length']
+    });
+
+    // Create maps for quick lookups
+    const userMap = new Map(recordedByUsers.map(user => [user.UserID, user]));
+    const sessionMap = new Map(sessions.map(session => [session.id, session.sessionName]));
+    const eventMap = new Map(events.map(event => [event.EventID, event.EventName]));
+    const distanceMap = new Map(distances.map(distance => [distance.id, `${distance.length}m`]));
+
+    // Group performance records by student and find best time
+    const studentPerformanceMap = new Map();
+
+    // Initialize map with all valid students
+    validStudents.forEach(student => {
+      studentPerformanceMap.set(student.StudentID, {
+        UserID: student.StudentID,
+        AdmissionNumber: student.AdmissionNumber,
+        FirstName: student.FirstName,
+        LastName: student.LastName,
+        AgeCategory: calculateAgeCategory(student.DOB),
+        bestTime: null,
+        bestTimeDate: null,
+        event: null,
+        distance: null,
+        session: null
+      });
+    });
+
+    // Process performance records to find best time for each student
+    performanceRecords.forEach(record => {
+      const studentId = record.StudentID;
+      if (studentPerformanceMap.has(studentId)) {
+        const studentData = studentPerformanceMap.get(studentId);
+        const currentTime = convertTimeToSeconds(record.Time);
+        const bestTime = studentData.bestTime ? convertTimeToSeconds(studentData.bestTime) : Infinity;
+
+        // Update if this is a better time
+        if (currentTime < bestTime) {
+          const recordedByUser = userMap.get(record.RecordedBy);
+          const sessionName = sessionMap.get(record.SessionID) || 'Unknown Session';
+          const eventName = eventMap.get(record.EventID) || 'Unknown Event';
+          const distance = distanceMap.get(record.DistanceID) || 'Unknown Distance';
+
+          studentData.bestTime = record.Time;
+          studentData.bestTimeDate = record.PerformanceDate;
+          studentData.event = eventName;
+          studentData.distance = distance;
+          studentData.session = sessionName;
+          studentData.recordedBy = recordedByUser ? `${recordedByUser.FirstName} ${recordedByUser.LastName}` : "Unknown";
+          studentData.recordedAt = new Date(record.createdAt).toLocaleString();
+        }
+      }
+    });
+
+    // Convert map to array and filter out students with no performance records
+    const response = Array.from(studentPerformanceMap.values())
+      .filter(student => student.bestTime !== null)
+      .sort((a, b) => convertTimeToSeconds(a.bestTime) - convertTimeToSeconds(b.bestTime))
+      .map((student, index) => ({
+        ...student,
+        rank: index + 1
+      }));
+
+    res.status(200).json({ performanceData: response });
+  } catch (error) {
+    console.error("Error fetching student performance data:", error);
+    res.status(500).json({ message: "Failed to retrieve student performance data" });
+  }
+};
+
+// Helper function to convert time string to seconds
+const convertTimeToSeconds = (timeStr) => {
+  if (!timeStr) return Infinity;
+  const parts = timeStr.split(':');
+  if (parts.length === 2) {
+    return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+  } else if (parts.length === 3) {
+    return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+  }
+  return Infinity;
 };
