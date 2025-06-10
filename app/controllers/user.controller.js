@@ -1175,13 +1175,17 @@ exports.getLeaderboardDataForReport = async (req, res) => {
 
     // First get all students based on the query
     const students = await Student.findAll({ where: studentQuery });
+    const ageCategories = await AgeCategory.findAll();
     
+    let validStudents;
     // Filter students based on valid age categories
-    const validStudents = students.filter(student => {
-      const studentAgeCategory = calculateAgeCategory(student.DOB);
-      return studentAgeCategory !== undefined && 
-             studentAgeCategory === ageCategory; // Exact match with the provided age category
-    });
+    if(students && students.length > 0){
+      validStudents = students.filter(student => {
+        const studentAgeCategory = calculateAgeCategory(new Date(student.DOB), getAgeCalculationBaseDate(), ageCategories);
+        return studentAgeCategory !== undefined && 
+               studentAgeCategory === ageCategory; // Exact match with the provided age category
+      });
+    }
 
     const studentIds = validStudents.map(student => student.StudentID);
 
