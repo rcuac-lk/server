@@ -173,4 +173,10 @@ module.exports = function(app) {
     [authJwt.verifyToken],
     controller.getTimingDataForReport
   )
+
+  app.post(
+    "/api/users/getLeaderboardDataForReport",
+    [authJwt.verifyToken],
+    controller.getLeaderboardDataForReport
+  )
 };
