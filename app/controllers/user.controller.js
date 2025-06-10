@@ -675,7 +675,14 @@ exports.markTiming = async(req, res) => {
  */
 exports.getAllStudents = async (req, res) => {
   try {
-    const students = await Student.findAll({ where: { Active: true } });
+    const students = await Student.findAll({ 
+      where: { Active: true },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['FirstName', 'LastName']
+      }]
+    });
     const ageCategories = await AgeCategory.findAll();
     // Filter students based on valid age categories and add age category
     const studentsWithAgeCategory = students
@@ -687,7 +694,8 @@ exports.getAllStudents = async (req, res) => {
         const ageCategory = calculateAgeCategory(new Date(student.DOB),getAgeCalculationBaseDate(),ageCategories);
         return {
           ...student.toJSON(),
-          AgeCategory: ageCategory
+          AgeCategory: ageCategory,
+          ParentName: student.user ? `${student.user.FirstName} ${student.user.LastName}` : null
         };
       });
 
