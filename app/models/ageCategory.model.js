@@ -11,6 +11,14 @@ module.exports = (sequelize, Sequelize) => {
           type: Sequelize.STRING,
           allowNull: false,
         },
+        MinAge: {
+          type: Sequelize.INTEGER,
+          allowNull:false,
+        },
+        MaxAge: {
+          type: Sequelize.INTEGER,
+          allowNull:false,
+        }
       },
       {
         freezeTableName: true,
