@@ -32,6 +32,7 @@ db.event = require("../models/event.model.js")(sequelize, Sequelize);
 db.distance = require("../models/distance.model.js")(sequelize, Sequelize);
 db.attendance = require("../models/attendance.model.js")(sequelize, Sequelize);
 db.performance = require("../models/performance.model.js")(sequelize, Sequelize);
+db.sessionProperties = require("../models/sessionProperties.model.js")(sequelize, Sequelize);
 
 db.user.belongsToMany(db.role, {
   through: "user_roles",

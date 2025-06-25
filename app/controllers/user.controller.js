@@ -1189,10 +1189,13 @@ exports.getLeaderboardDataForReport = async (req, res) => {
     // Filter students based on valid age categories
     if(students && students.length > 0){
       validStudents = students.filter(student => {
+        if (!student.DOB) return false; // Skip if DOB is missing
         const studentAgeCategory = calculateAgeCategory(new Date(student.DOB), getAgeCalculationBaseDate(), ageCategories);
         return studentAgeCategory !== undefined && 
                studentAgeCategory === ageCategory; // Exact match with the provided age category
       });
+    } else {
+      validStudents = [];
     }
 
     const studentIds = validStudents.map(student => student.StudentID);
@@ -1274,12 +1277,13 @@ exports.getLeaderboardDataForReport = async (req, res) => {
 
     // Initialize map with all valid students
     validStudents.forEach(student => {
+      if (!student.DOB) return; // Skip if DOB is missing
       studentPerformanceMap.set(student.StudentID, {
         UserID: student.StudentID,
         AdmissionNumber: student.AdmissionNumber,
         FirstName: student.FirstName,
         LastName: student.LastName,
-        AgeCategory: calculateAgeCategory(student.DOB),
+        AgeCategory: calculateAgeCategory(new Date(student.DOB), getAgeCalculationBaseDate(), ageCategories),
         bestTime: null,
         bestTimeDate: null,
         event: null,
