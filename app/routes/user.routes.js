@@ -179,4 +179,40 @@ module.exports = function(app) {
     [authJwt.verifyToken],
     controller.getLeaderboardDataForReport
   )
+
+  app.post(
+    "/api/users/addEvent",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.addEvent
+  )
+
+  app.post(
+    "/api/users/addDistance",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.addDistance
+  )
+
+  app.post(
+    "/api/users/updateEvent/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.updateEvent
+  )
+
+  app.post(
+    "/api/users/updateDistance/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.updateDistance
+  )
+
+  app.post(
+    "/api/users/deactivateEvent/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.deactivateEvent
+  )
+
+  app.post(
+    "/api/users/deactivateDistance/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.deactivateDistance
+  )
 };

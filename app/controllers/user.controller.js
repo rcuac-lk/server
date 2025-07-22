@@ -2,7 +2,7 @@ const db = require('../models');
 const User = db.user;
 const AgeCategory = db.ageCategory;
 const Session = db.session;
-const EventType = db.event;
+const Event = db.event;
 const Distance = db.distance;
 const Attendance = db.attendance;
 const Student = db.student;
@@ -327,7 +327,8 @@ exports.getSessionData = async (req, res) => {
 
 exports.getEventTypes = async (req, res) => {
   try {
-    const data = await EventType.findAll({
+    const data = await Event.findAll({
+      where: { Active: true },
       attributes: ['EventID', 'EventName'],
     });
 
@@ -346,6 +347,7 @@ exports.getEventTypes = async (req, res) => {
 exports.getEventLengths = async (req, res) => {
   try {
     const data = await Distance.findAll({
+      where: { Active: true },
       attributes: ['id', 'length'],
     });
 
@@ -627,7 +629,7 @@ exports.markTiming = async(req, res) => {
     }
 
     // Validate event type exists
-    const eventType = await EventType.findOne({
+    const eventType = await Event.findOne({
       where: { EventID: eventId }
     });
     if (!eventType) {
@@ -1064,7 +1066,7 @@ exports.getTimingDataForReport = async (req, res) => {
 
     // Get all unique event IDs from performance records
     const eventIds = [...new Set(performanceRecords.map(record => record.EventID))];
-    const events = await EventType.findAll({
+    const events = await Event.findAll({
       where: {
         EventID: {
           [Op.in]: eventIds
@@ -1246,7 +1248,7 @@ exports.getLeaderboardDataForReport = async (req, res) => {
 
     // Get all unique event IDs from performance records
     const eventIds = [...new Set(performanceRecords.map(record => record.EventID))];
-    const events = await EventType.findAll({
+    const events = await Event.findAll({
       where: {
         EventID: {
           [Op.in]: eventIds
@@ -1345,3 +1347,104 @@ const convertTimeToSeconds = (timeStr) => {
   }
   return Infinity;
 };
+
+exports.addEvent = async (req, res) => {
+  try {
+    const { EventName } = req.body;
+    if (!EventName) {
+      return res.status(400).json({ message: "EventName is required" });
+    }
+    const event = await Event.create({ EventName: EventName, Active: true });
+    res.status(201).json({ message: "Event created successfully", event });
+  } catch (error) {
+    console.error("Error adding event:", error);
+    res.status(500).json({ message: "Failed to add event" });
+  }
+};
+
+exports.addDistance = async (req, res) => {
+  try {
+    const { length } = req.body;
+    if (!length) {
+      return res.status(400).json({ message: "Length is required" });
+    }
+    const distance = await Distance.create({ length, Active: true });
+    res.status(201).json({ message: "Distance created successfully", distance });
+  } catch (error) {
+    console.error("Error adding distance:", error);
+    res.status(500).json({ message: "Failed to add distance" });
+  }
+};
+
+exports.updateEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { EventName } = req.body;
+    if (!EventName) {
+      return res.status(400).json({ message: "EventName is required" });
+    }
+    const event = await Event.findByPk(id);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    event.EventName = EventName;
+    await event.save();
+    res.status(200).json({ message: "Event updated successfully", event });
+  } catch (error) {
+    console.error("Error updating event:", error);
+    res.status(500).json({ message: "Failed to update event" });
+  }
+};
+
+exports.updateDistance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { length } = req.body;
+    if (!length) {
+      return res.status(400).json({ message: "Length is required" });
+    }
+    const distance = await Distance.findByPk(id);
+    if (!distance) {
+      return res.status(404).json({ message: "Distance not found" });
+    }
+    distance.length = length;
+    await distance.save();
+    res.status(200).json({ message: "Distance updated successfully", distance });
+  } catch (error) {
+    console.error("Error updating distance:", error);
+    res.status(500).json({ message: "Failed to update distance" });
+  }
+};
+
+exports.deactivateEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findByPk(id);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    event.Active = false;
+    await event.save();
+    res.status(200).json({ message: "Event deactivated successfully" });
+  } catch (error) {
+    console.error("Error deactivating event:", error);
+    res.status(500).json({ message: "Failed to deactivate event" });
+  }
+};
+
+exports.deactivateDistance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const distance = await Distance.findByPk(id);
+    if (!distance) {
+      return res.status(404).json({ message: "Distance not found" });
+    }
+    distance.Active = false;
+    await distance.save();
+    res.status(200).json({ message: "Distance deactivated successfully" });
+  } catch (error) {
+    console.error("Error deactivating distance:", error);
+    res.status(500).json({ message: "Failed to deactivate distance" });
+  }
+};
+
