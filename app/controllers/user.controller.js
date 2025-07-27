@@ -1450,15 +1450,19 @@ exports.deactivateDistance = async (req, res) => {
 
 exports.addSession = async (req, res) => {
   try {
-    const { sessionName, eventTypes, distances, date } = req.body;
+    const { sessionName, eventTypes, distances, date, createdByUser, description } = req.body;
 
     // Validate input
-    if (!sessionName || !Array.isArray(eventTypes) || !Array.isArray(distances)) {
-      return res.status(400).json({ message: "sessionName, eventTypes, and distances are required" });
+    if (!sessionName || !Array.isArray(eventTypes) || !Array.isArray(distances) || !createdByUser ) {
+      return res.status(400).json({ message: "sessionName, eventTypes, userId and distances are required" });
     }
 
     // Create the session
-    const session = await Session.create({ sessionName, Active: true });
+    const session = await Session.create({ 
+      sessionName,
+      description,
+      createdByUser, 
+      Active: true });
 
     // Prepare session_properties rows without date
     const sessionPropertiesRows = [];
@@ -1519,12 +1523,41 @@ exports.getSession = async (req, res) => {
       raw: true
     });
 
+    // Collect all unique eventType and distance IDs
+    const allEventTypeIds = new Set();
+    const allDistanceIds = new Set();
+    properties.forEach(prop => {
+      if (prop.prop_style && !prop.prop_length && !prop.prop_date) {
+        allEventTypeIds.add(prop.prop_style);
+      } else if (!prop.prop_style && prop.prop_length && !prop.prop_date) {
+        allDistanceIds.add(prop.prop_length);
+      }
+    });
+
+    // Fetch event names and distance values
+    const eventTypes = await db.event.findAll({
+      where: { EventID: Array.from(allEventTypeIds) },
+      attributes: ['EventID', 'EventName'],
+      raw: true
+    });
+    const eventTypeMap = {};
+    eventTypes.forEach(ev => { eventTypeMap[ev.EventID] = ev.EventName; });
+
+    const distances = await db.distance.findAll({
+      where: { id: Array.from(allDistanceIds) },
+      attributes: ['id', 'length'],
+      raw: true
+    });
+    const distanceMap = {};
+    distances.forEach(d => { distanceMap[d.id] = d.length + 'm'; });
+
     // Group properties by session
     const sessionMap = {};
     sessions.forEach(session => {
       sessionMap[session.id] = {
         id: session.id,
         sessionName: session.sessionName,
+        description: session.description,
         properties: {
           eventTypes: [],
           distances: [],
@@ -1535,9 +1568,9 @@ exports.getSession = async (req, res) => {
 
     properties.forEach(prop => {
       if (prop.prop_style && !prop.prop_length && !prop.prop_date) {
-        sessionMap[prop.session_id].properties.eventTypes.push(prop.prop_style);
+        sessionMap[prop.session_id].properties.eventTypes.push(eventTypeMap[prop.prop_style] || prop.prop_style);
       } else if (!prop.prop_style && prop.prop_length && !prop.prop_date) {
-        sessionMap[prop.session_id].properties.distances.push(prop.prop_length);
+        sessionMap[prop.session_id].properties.distances.push(distanceMap[prop.prop_length] || prop.prop_length);
       } else if (!prop.prop_style && !prop.prop_length && prop.prop_date) {
         sessionMap[prop.session_id].properties.dates.push(prop.prop_date);
       }
@@ -1661,7 +1694,7 @@ exports.modifySession = async (req, res) => {
 
 exports.deactivateSession = async (req, res) => {
   try {
-    const { sessionId } = req.body;
+    const { sessionId } = req.params;
     if (!sessionId) {
       return res.status(400).json({ message: "sessionId is required" });
     }
