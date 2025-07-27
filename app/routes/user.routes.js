@@ -182,37 +182,61 @@ module.exports = function(app) {
 
   app.post(
     "/api/users/addEvent",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin"])],
     controller.addEvent
   )
 
   app.post(
     "/api/users/addDistance",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin"])],
     controller.addDistance
   )
 
   app.post(
     "/api/users/updateEvent/:id",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin"])],
     controller.updateEvent
   )
 
   app.post(
     "/api/users/updateDistance/:id",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin"])],
     controller.updateDistance
   )
 
   app.post(
     "/api/users/deactivateEvent/:id",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin"])],
     controller.deactivateEvent
   )
 
   app.post(
     "/api/users/deactivateDistance/:id",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin"])],
     controller.deactivateDistance
   )
+
+  app.post(
+    "/api/users/addSession",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.addSession
+  );
+
+  app.get(
+    "/api/users/getSession",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.getSession
+  );
+
+  app.post(
+    "/api/users/modifySession",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.modifySession
+  );
+
+  app.post(
+    "/api/users/deactivateSession",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.deactivateSession
+  );
 };

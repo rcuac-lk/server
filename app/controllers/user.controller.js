@@ -1448,3 +1448,242 @@ exports.deactivateDistance = async (req, res) => {
   }
 };
 
+exports.addSession = async (req, res) => {
+  try {
+    const { sessionName, eventTypes, distances, date } = req.body;
+
+    // Validate input
+    if (!sessionName || !Array.isArray(eventTypes) || !Array.isArray(distances)) {
+      return res.status(400).json({ message: "sessionName, eventTypes, and distances are required" });
+    }
+
+    // Create the session
+    const session = await Session.create({ sessionName, Active: true });
+
+    // Prepare session_properties rows without date
+    const sessionPropertiesRows = [];
+    
+    eventTypes.forEach(prop_style => {
+      sessionPropertiesRows.push({
+        session_id: session.id,
+        prop_style: prop_style,
+        prop_length: null,
+        prop_date: null,
+        Active: 1
+      });
+    });
+
+    distances.forEach(prop_length => {
+      sessionPropertiesRows.push({
+        session_id: session.id,
+        prop_style: null,
+        prop_length: prop_length,
+        prop_date: null,
+        Active: 1
+      });
+    });
+
+    // Insert rows without date
+    await db.sessionProperties.bulkCreate(sessionPropertiesRows);
+
+    // If date is provided, insert only one row with just the date
+    if (date) {
+      await db.sessionProperties.create({
+        session_id: session.id,
+        prop_style: null,
+        prop_length: null,
+        prop_date: date,
+        Active: 1
+      });
+    }
+
+    res.status(201).json({ message: "Session created successfully", session });
+  } catch (error) {
+    console.error("Error adding session:", error);
+    res.status(500).json({ message: "Failed to add session" });
+  }
+};
+
+exports.getSession = async (req, res) => {
+  try {
+    // Get all sessions
+    const sessions = await Session.findAll({ where: { Active: true } });
+    if (!sessions || sessions.length === 0) {
+      return res.status(404).json({ message: "No sessions found" });
+    }
+
+    // Get all session_properties for these sessions
+    const sessionIds = sessions.map(s => s.id);
+    const properties = await db.sessionProperties.findAll({
+      where: { session_id: sessionIds, Active: 1 },
+      raw: true
+    });
+
+    // Group properties by session
+    const sessionMap = {};
+    sessions.forEach(session => {
+      sessionMap[session.id] = {
+        id: session.id,
+        sessionName: session.sessionName,
+        properties: {
+          eventTypes: [],
+          distances: [],
+          dates: []
+        }
+      };
+    });
+
+    properties.forEach(prop => {
+      if (prop.prop_style && !prop.prop_length && !prop.prop_date) {
+        sessionMap[prop.session_id].properties.eventTypes.push(prop.prop_style);
+      } else if (!prop.prop_style && prop.prop_length && !prop.prop_date) {
+        sessionMap[prop.session_id].properties.distances.push(prop.prop_length);
+      } else if (!prop.prop_style && !prop.prop_length && prop.prop_date) {
+        sessionMap[prop.session_id].properties.dates.push(prop.prop_date);
+      }
+    });
+
+    // Convert map to array
+    const result = Object.values(sessionMap);
+    res.status(200).json({ sessions: result });
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    res.status(500).json({ message: "Failed to fetch sessions" });
+  }
+};
+
+exports.modifySession = async (req, res) => {
+  try {
+    const { sessionId, eventTypes, distances, date } = req.body;
+    if (!sessionId || !Array.isArray(eventTypes) || !Array.isArray(distances)) {
+      return res.status(400).json({ message: "sessionId, eventTypes, and distances are required" });
+    }
+
+    // Get all properties for this session
+    const allProps = await db.sessionProperties.findAll({
+      where: { session_id: sessionId },
+      raw: false
+    });
+
+    // --- EVENT TYPES ---
+    // Find all eventType rows (prop_style set, prop_length null, prop_date null)
+    const eventTypeRows = allProps.filter(p => p.prop_style && !p.prop_length && !p.prop_date);
+    const currentEventTypes = eventTypeRows.filter(p => p.Active).map(p => p.prop_style);
+
+    // Deactivate removed eventTypes
+    for (const row of eventTypeRows) {
+      if (row.Active && !eventTypes.includes(row.prop_style)) {
+        row.Active = 0;
+        await row.save();
+      }
+    }
+    // Reactivate or add new eventTypes
+    for (const et of eventTypes) {
+      let row = eventTypeRows.find(p => p.prop_style === et);
+      if (row) {
+        if (!row.Active) {
+          row.Active = 1;
+          await row.save();
+        }
+      } else {
+        await db.sessionProperties.create({
+          session_id: sessionId,
+          prop_style: et,
+          prop_length: null,
+          prop_date: null,
+          Active: 1
+        });
+      }
+    }
+
+    // --- DISTANCES ---
+    const distanceRows = allProps.filter(p => !p.prop_style && p.prop_length && !p.prop_date);
+    const currentDistances = distanceRows.filter(p => p.Active).map(p => p.prop_length);
+
+    // Deactivate removed distances
+    for (const row of distanceRows) {
+      if (row.Active && !distances.includes(row.prop_length)) {
+        row.Active = 0;
+        await row.save();
+      }
+    }
+    // Reactivate or add new distances
+    for (const d of distances) {
+      let row = distanceRows.find(p => p.prop_length === d);
+      if (row) {
+        if (!row.Active) {
+          row.Active = 1;
+          await row.save();
+        }
+      } else {
+        await db.sessionProperties.create({
+          session_id: sessionId,
+          prop_style: null,
+          prop_length: d,
+          prop_date: null,
+          Active: 1
+        });
+      }
+    }
+
+    // --- DATE ROW ---
+    const dateRow = allProps.find(p => !p.prop_style && !p.prop_length && p.prop_date);
+    if (date) {
+      if (dateRow) {
+        if (!dateRow.Active || dateRow.prop_date !== date) {
+          dateRow.prop_date = date;
+          dateRow.Active = 1;
+          await dateRow.save();
+        }
+      } else {
+        await db.sessionProperties.create({
+          session_id: sessionId,
+          prop_style: null,
+          prop_length: null,
+          prop_date: date,
+          Active: 1
+        });
+      }
+    } else {
+      // If no date provided, deactivate existing date row
+      if (dateRow && dateRow.Active) {
+        dateRow.Active = 0;
+        await dateRow.save();
+      }
+    }
+
+    res.status(200).json({ message: "Session modified successfully" });
+  } catch (error) {
+    console.error("Error modifying session:", error);
+    res.status(500).json({ message: "Failed to modify session" });
+  }
+};
+
+exports.deactivateSession = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ message: "sessionId is required" });
+    }
+
+    // Deactivate the session
+    const session = await Session.findByPk(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    session.Active = false;
+    await session.save();
+
+    // Deactivate all related session_properties
+    await db.sessionProperties.update(
+      { Active: 0 },
+      { where: { session_id: sessionId } }
+    );
+
+    res.status(200).json({ message: "Session deactivated successfully" });
+  } catch (error) {
+    console.error("Error deactivating session:", error);
+    res.status(500).json({ message: "Failed to deactivate session" });
+  }
+};
+
