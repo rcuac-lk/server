@@ -1694,13 +1694,13 @@ exports.modifySession = async (req, res) => {
 
 exports.deactivateSession = async (req, res) => {
   try {
-    const { sessionId } = req.params;
-    if (!sessionId) {
+    const { id } = req.params;
+    if (!id) {
       return res.status(400).json({ message: "sessionId is required" });
     }
 
     // Deactivate the session
-    const session = await Session.findByPk(sessionId);
+    const session = await Session.findByPk(id);
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
     }
@@ -1710,7 +1710,7 @@ exports.deactivateSession = async (req, res) => {
     // Deactivate all related session_properties
     await db.sessionProperties.update(
       { Active: 0 },
-      { where: { session_id: sessionId } }
+      { where: { session_id: id } }
     );
 
     res.status(200).json({ message: "Session deactivated successfully" });
