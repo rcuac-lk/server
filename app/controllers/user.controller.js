@@ -310,7 +310,8 @@ exports.getAgeGroups = async (req, res) => {
 exports.getSessionData = async (req, res) => {
   try {
     const data = await Session.findAll({
-      attributes: ['id', 'sessionName']
+      attributes: ['id', 'sessionName'],
+      where: { Active: true }
     });
 
     const sessions = data.map((item) => ({
@@ -512,19 +513,50 @@ exports.getAttendancedata = async (req, res) => {
       // Calculate best timing (lowest time)
       let bestTiming = null;
       if (performances.length > 0) {
-        // Convert all times to seconds for comparison
-        const timesInSeconds = performances.map(p => {
-          const [minutes, seconds] = p.Time.split(':').map(Number);
-          return minutes * 60 + seconds;
+        // Convert all times to milliseconds for comparison
+        const timesInMs = performances.map(p => {
+          // Support formats: MM:SS.mmm, HH:MM:SS.mmm, SS.mmm, MM:SS
+          const timeStr = p.Time;
+          let ms = 0;
+          const parts = timeStr.split(":");
+          if (parts.length === 3) {
+            // HH:MM:SS(.mmm)
+            let [hh, mm, ssMs] = parts;
+            let [ss, mmm = "0"] = ssMs.split(".");
+            ms += (parseInt(hh, 10) || 0) * 3600000;
+            ms += (parseInt(mm, 10) || 0) * 60000;
+            ms += (parseInt(ss, 10) || 0) * 1000;
+            ms += (parseInt(mmm, 10) || 0);
+          } else if (parts.length === 2) {
+            // MM:SS(.mmm)
+            let [mm, ssMs] = parts;
+            let [ss, mmm = "0"] = ssMs.split(".");
+            ms += (parseInt(mm, 10) || 0) * 60000;
+            ms += (parseInt(ss, 10) || 0) * 1000;
+            ms += (parseInt(mmm, 10) || 0);
+          } else if (parts.length === 1) {
+            // SS(.mmm)
+            let [ss, mmm = "0"] = parts[0].split(".");
+            ms += (parseInt(ss, 10) || 0) * 1000;
+            ms += (parseInt(mmm, 10) || 0);
+          }
+          return ms;
         });
-        
         // Find the minimum time
-        const minTimeInSeconds = Math.min(...timesInSeconds);
-        
-        // Convert back to MM:SS format
-        const minutes = Math.floor(minTimeInSeconds / 60);
-        const seconds = minTimeInSeconds % 60;
-        bestTiming = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const minTimeInMs = Math.min(...timesInMs);
+        // Convert back to MM:SS.mmm or HH:MM:SS.mmm if needed
+        let ms = minTimeInMs;
+        let hours = Math.floor(ms / 3600000);
+        ms = ms % 3600000;
+        let minutes = Math.floor(ms / 60000);
+        ms = ms % 60000;
+        let seconds = Math.floor(ms / 1000);
+        let milliseconds = ms % 1000;
+        if (hours > 0) {
+          bestTiming = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+        } else {
+          bestTiming = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+        }
       }
 
       response.push({
@@ -1457,6 +1489,30 @@ exports.addSession = async (req, res) => {
       return res.status(400).json({ message: "sessionName, eventTypes, userId and distances are required" });
     }
 
+    // Duplicate check: sessionName (and date if provided)
+    const existingSession = await Session.findOne({
+      where: { sessionName, Active: true }
+    });
+    if (existingSession) {
+      if (date) {
+        // Check if this session has a sessionProperties row with the same date
+        const normalizedDate = new Date(date).toISOString().slice(0, 10);
+        const existingDateRow = await db.sessionProperties.findOne({
+          where: {
+            session_id: existingSession.id,
+            prop_date: normalizedDate,
+            Active: 1
+          }
+        });
+        if (existingDateRow) {
+          return res.status(409).json({ message: "A session with this name and date already exists." });
+        }
+      } else {
+        // If no date provided, just block duplicate sessionName
+        return res.status(409).json({ message: "A session with this name already exists." });
+      }
+    }
+
     // Create the session
     const session = await Session.create({ 
       sessionName,
@@ -1587,9 +1643,27 @@ exports.getSession = async (req, res) => {
 
 exports.modifySession = async (req, res) => {
   try {
-    const { sessionId, eventTypes, distances, date } = req.body;
+    const { sessionId, eventTypes, distances, date, sessionName, description } = req.body;
     if (!sessionId || !Array.isArray(eventTypes) || !Array.isArray(distances)) {
       return res.status(400).json({ message: "sessionId, eventTypes, and distances are required" });
+    }
+
+    // Update session name and description if provided
+    const session = await Session.findByPk(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    let sessionUpdated = false;
+    if (sessionName && session.sessionName !== sessionName) {
+      session.sessionName = sessionName;
+      sessionUpdated = true;
+    }
+    if (description !== undefined && session.description !== description) {
+      session.description = description;
+      sessionUpdated = true;
+    }
+    if (sessionUpdated) {
+      await session.save();
     }
 
     // Get all properties for this session
@@ -1660,28 +1734,35 @@ exports.modifySession = async (req, res) => {
     }
 
     // --- DATE ROW ---
-    const dateRow = allProps.find(p => !p.prop_style && !p.prop_length && p.prop_date);
+    // Deactivate all existing date rows for this session
+    const dateRows = allProps.filter(p => !p.prop_style && !p.prop_length && p.prop_date);
+    for (const row of dateRows) {
+      if (row.Active) {
+        row.Active = 0;
+        await row.save();
+      }
+    }
+    // If a new date is provided, create or update a single active date row
     if (date) {
-      if (dateRow) {
-        if (!dateRow.Active || dateRow.prop_date !== date) {
-          dateRow.prop_date = date;
-          dateRow.Active = 1;
-          await dateRow.save();
-        }
+      // Normalize date to ISO string (date only)
+      const normalizedDate = new Date(date).toISOString().slice(0, 10);
+      // Try to find a row with the same date (ignoring time)
+      let matchingRow = dateRows.find(r => {
+        const rowDate = new Date(r.prop_date).toISOString().slice(0, 10);
+        return rowDate === normalizedDate;
+      });
+      if (matchingRow) {
+        matchingRow.Active = 1;
+        matchingRow.prop_date = normalizedDate;
+        await matchingRow.save();
       } else {
         await db.sessionProperties.create({
           session_id: sessionId,
           prop_style: null,
           prop_length: null,
-          prop_date: date,
+          prop_date: normalizedDate,
           Active: 1
         });
-      }
-    } else {
-      // If no date provided, deactivate existing date row
-      if (dateRow && dateRow.Active) {
-        dateRow.Active = 0;
-        await dateRow.save();
       }
     }
 
