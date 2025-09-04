@@ -26,6 +26,13 @@ db.user = require("../models/user.model.js")(sequelize, Sequelize);
 db.role = require("../models/role.model.js")(sequelize, Sequelize);
 db.refreshToken = require("../models/refreshToken.model.js")(sequelize, Sequelize);
 db.student = require("../models/student.model.js")(sequelize, Sequelize);
+db.ageCategory = require("../models/ageCategory.model.js")(sequelize, Sequelize);
+db.session = require("../models/session.model.js")(sequelize, Sequelize);
+db.event = require("../models/event.model.js")(sequelize, Sequelize);
+db.distance = require("../models/distance.model.js")(sequelize, Sequelize);
+db.attendance = require("../models/attendance.model.js")(sequelize, Sequelize);
+db.performance = require("../models/performance.model.js")(sequelize, Sequelize);
+db.sessionProperties = require("../models/sessionProperties.model.js")(sequelize, Sequelize);
 
 db.user.belongsToMany(db.role, {
   through: "user_roles",

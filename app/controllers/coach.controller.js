@@ -3,7 +3,6 @@ const User = db.user;
 const { Op, Sequelize } = require("sequelize");
 
 exports.getAllUsers = (req, res) => {
-  console.log("Getting all users...");
   User.findAll({ 
     where: { 
       Active: true, 
