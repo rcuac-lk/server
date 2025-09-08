@@ -263,4 +263,10 @@ module.exports = function(app) {
   //   [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
   //   controller.addSession
   // );
+
+  app.get(
+    "/api/users/forgetPassword/:id",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin"])],
+    controller.forgetPassword
+  );
 };
