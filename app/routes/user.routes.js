@@ -224,7 +224,7 @@ module.exports = function(app) {
 
   app.get(
     "/api/users/getSession",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
     controller.getSession
   );
 
@@ -234,23 +234,23 @@ module.exports = function(app) {
     controller.modifySession
   );
 
-  // app.post(
-  //   "/api/users/deactivateSession",
-  //   [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
-  //   controller.deactivateSession
-  // );
+  app.post(
+    "/api/users/deactivateSession",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.deactivateSession
+  );
 
-  // app.get(
-  //   "/api/users/getSessionDetails",
-  //   [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
-  //   controller.getSession
-  // );
+  app.get(
+    "/api/users/getSessionDetails",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    controller.getSession
+  );
 
-  // app.post(
-  //   "/api/users/updateSessionDate",
-  //   [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
-  //   controller.modifySession
-  // );
+  app.post(
+    "/api/users/updateSessionDate",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.modifySession
+  );
 
   app.post(
     "/api/users/deleteSession/:id",
@@ -258,11 +258,11 @@ module.exports = function(app) {
     controller.deactivateSession
   );
 
-  // app.post(
-  //   "/api/users/addSessionProperty",
-  //   [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
-  //   controller.addSession
-  // );
+  app.post(
+    "/api/users/addSessionProperty",
+    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager"])],
+    controller.addSession
+  );
 
   app.get(
     "/api/users/forgetPassword/:id",
