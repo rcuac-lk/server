@@ -86,31 +86,31 @@ module.exports = function(app) {
 
   app.get(
     "/api/users/ageGroups",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    [authJwt.verifyToken],
     controller.getAgeGroups
   );
 
   app.get(
     "/api/users/getSessionData",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    [authJwt.verifyToken],
     controller.getSessionData
   );
 
   app.get(
     "/api/users/getEventTypes",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    [authJwt.verifyToken],
     controller.getEventTypes
   );
 
   app.get(
     "/api/users/getEventLengths",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    [authJwt.verifyToken],
     controller.getEventLengths
   );
 
   app.get(
     "/api/users/getAttendancedata",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    [authJwt.verifyToken],
     controller.getAttendancedata
   )
 
@@ -224,7 +224,7 @@ module.exports = function(app) {
 
   app.get(
     "/api/users/getSession",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    [authJwt.verifyToken],
     controller.getSession
   );
 
@@ -242,7 +242,7 @@ module.exports = function(app) {
 
   app.get(
     "/api/users/getSessionDetails",
-    [authJwt.verifyToken, authJwt.allowRoles(["Admin", "Manager", "Coach"])],
+    [authJwt.verifyToken],
     controller.getSession
   );
 
