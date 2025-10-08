@@ -255,6 +255,50 @@ exports.updatePassword = (req, res) => {
     });
 };
 
+// Admin-triggered temporary password reset (8-character random password)
+exports.forgetPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Generate an 8-character temporary password (mixed case + digits)
+    const generateTempPassword = (length = 8) => {
+      const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // exclude ambiguous I/O
+      const lowercase = "abcdefghjkmnpqrstuvwxyz"; // exclude ambiguous l/o
+      const digits = "23456789"; // exclude 0/1
+      const all = uppercase + lowercase + digits;
+
+      // Ensure at least one from each set
+      const pick = (chars) => chars[Math.floor(Math.random() * chars.length)];
+      let result = pick(uppercase) + pick(lowercase) + pick(digits);
+      for (let i = result.length; i < length; i++) {
+        result += pick(all);
+      }
+      // Simple shuffle
+      return result
+        .split('')
+        .sort(() => Math.random() - 0.5)
+        .join('');
+    };
+
+    const temporaryPassword = generateTempPassword(8);
+    user.Password = bcrypt.hashSync(temporaryPassword, 8);
+    await user.save();
+
+    return res.status(200).json({
+      message: "Temporary password generated successfully.",
+      temporaryPassword
+    });
+  } catch (error) {
+    console.error("Error generating temporary password:", error);
+    return res.status(500).json({ message: "Failed to reset password" });
+  }
+};
+
 exports.searchUsers = async (req, res) => {
   try {
     const { search, role } = req.query;
