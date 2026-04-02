@@ -806,7 +806,7 @@ exports.getStudentById = async (req, res) => {
 exports.updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { admissionNumber, firstName, lastName, dateOfBirth } = req.body;
+    const { admissionNumber, firstName, lastName, dateOfBirth, fullName, nameWithInitials } = req.body;
     console.log("+Fn updateStudent id ["+ id+ "]"+ "  admissionNumber ["+ admissionNumber+ "]"+ " firstName ["+ firstName+ "]"+ " lastName ["+ lastName+ "]"+ " dateOfBirth ["+ dateOfBirth+ "]");    // Input validation
     if (!id || !admissionNumber || !firstName || !lastName || !dateOfBirth) {
       return res.status(400).json({
@@ -852,7 +852,9 @@ exports.updateStudent = async (req, res) => {
       AdmissionNumber: String(admissionNumber).trim(),
       FirstName: firstName.trim(),
       LastName: lastName.trim(),
-      DOB: dateOfBirth
+      DOB: dateOfBirth,
+      FullName: fullName ? fullName.trim() : null,
+      NameWithInitials: nameWithInitials ? nameWithInitials.trim() : null
     };
 
     // Update and fetch student

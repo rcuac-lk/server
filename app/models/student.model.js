@@ -14,6 +14,12 @@ module.exports = (sequelize, Sequelize) => {
     LastName: {
       type: Sequelize.STRING(50)
     },
+    FullName: {
+      type: Sequelize.TEXT
+    },
+    NameWithInitials: {
+      type: Sequelize.TEXT
+    },
     Active: {
       type: Sequelize.BOOLEAN
     },
